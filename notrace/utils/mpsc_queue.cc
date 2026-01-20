@@ -1,88 +1,74 @@
 #include "utils/mpsc_queue.h"
-#include "utils/ring_buffer.h"
+#include <algorithm>
+#include <iostream>
 
 namespace notrace {
+
 MPSCMessageQueue::~MPSCMessageQueue() {
   std::lock_guard<std::mutex> lock(registryMutex_);
   for (auto buf : buffers_) {
     delete buf;
   }
+  buffers_.clear();
 }
 
 ThreadLocalRingBuffer* MPSCMessageQueue::getThreadLocalBuffer() {
-  static thread_local ThreadLocalRingBuffer* myBuffer = nullptr;
+  ThreadLocalRingBuffer* newBuffer = new ThreadLocalRingBuffer();
 
-  if (myBuffer == nullptr) {
-    myBuffer = new ThreadLocalRingBuffer();
-
+  {
     std::lock_guard<std::mutex> lock(registryMutex_);
-    buffers_.push_back(myBuffer);
+    buffers_.push_back(newBuffer);
   }
 
-  return myBuffer;
-}
-
-void* MPSCMessageQueue::reserveBytes(nvbit_api_cuda_t type,
-                                     size_t payloadSize) {
-  ThreadLocalRingBuffer* buf = this->getThreadLocalBuffer();
-
-  size_t total_size = sizeof(MPSCMessageHeader) + payloadSize;
-  void* ptr = buf->reserve(total_size);
-  if (ptr == nullptr) {
-    return nullptr;
-  }
-
-  MPSCMessageHeader* header = reinterpret_cast<MPSCMessageHeader*>(ptr);
-  header->api_type = type;
-  header->size = static_cast<uint32_t>(payloadSize);
-
-  return reinterpret_cast<void*>(header + 1);
-}
-
-void MPSCMessageQueue::commitMessage() {
-  ThreadLocalRingBuffer* buf = this->getThreadLocalBuffer();
-  buf->commit();
+  return newBuffer;
 }
 
 void MPSCMessageQueue::registerConsumer(nvbit_api_cuda_t type,
                                         MessageConsumer consumer) {
   std::lock_guard<std::mutex> lock(registryMutex_);
+
   if (type >= consumers_.size()) {
     size_t required = type + 1;
-    size_t doubled = consumers_.size() * 2;
-    constexpr size_t min_start = 64;
-    size_t new_size = std::max({required, doubled, min_start});
+    size_t current = consumers_.size();
+    size_t new_size = std::max({required, current * 2, size_t(64)});
     consumers_.resize(new_size, nullptr);
   }
+
+  consumers_[type] = consumer;
 }
 
 size_t MPSCMessageQueue::processUpdates() {
-  std::unique_lock<std::mutex> lock(this->registryMutex_);
+  std::vector<ThreadLocalRingBuffer*> buffers_snapshot;
+  {
+    std::lock_guard<std::mutex> lock(this->registryMutex_);
+    buffers_snapshot = this->buffers_;
+  }
+
   size_t total_bytes = 0;
-  for (ThreadLocalRingBuffer* buf : this->buffers_) {
+
+  for (ThreadLocalRingBuffer* buf : buffers_snapshot) {
     while (true) {
       BufferSpan span = buf->peek();
+
       if (span.size < sizeof(MPSCMessageHeader)) {
-        assert(false);  // the message should always be complete with a header
         break;
       }
 
       MPSCMessageHeader* header =
           reinterpret_cast<MPSCMessageHeader*>(span.data);
+
       size_t message_size = sizeof(MPSCMessageHeader) + header->size;
 
       if (span.size < message_size) {
-        assert(false);
-        break;  // the message should always shorter than the available size
+        break;
       }
 
-      MessageConsumer consumer = nullptr;
-      if (this->consumers_.size() > header->api_type) {
-        consumer = this->consumers_[header->api_type];
-      }
-      if (consumer != nullptr) {
-        void* payload = reinterpret_cast<void*>(header + 1);
-        consumer(payload, header->size);
+      if (header->api_type < this->consumers_.size()) {
+        MessageConsumer consumer = this->consumers_[header->api_type];
+        if (consumer != nullptr) {
+          void* payload = reinterpret_cast<void*>(header + 1);
+          consumer(payload, header->size);
+        }
       }
 
       buf->advance(message_size);
@@ -92,4 +78,7 @@ size_t MPSCMessageQueue::processUpdates() {
   return total_bytes;
 }
 
+inline void TraceProducer::initialize() {
+  buffer_ = MPSCMessageQueue::getInstance().getThreadLocalBuffer();
+}
 }  // namespace notrace

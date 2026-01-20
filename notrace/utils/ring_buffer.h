@@ -43,6 +43,15 @@ class ThreadLocalRingBuffer {
 
   void* reserve(size_t size);
 
+  template <typename T>
+  T* reserve() {
+    void* ptr = this->reserve(sizeof(T));
+    if (ptr == nullptr) {
+      return nullptr;
+    }
+    return reinterpret_cast<T*>(ptr);
+  }
+
   void commit();
 
   BufferSpan peek();

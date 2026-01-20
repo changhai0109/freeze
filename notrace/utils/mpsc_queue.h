@@ -1,56 +1,72 @@
 #ifndef __NOTRACE_UTILS_MPSC_QUEUE_H__
 #define __NOTRACE_UTILS_MPSC_QUEUE_H__
 
-#include <algorithm>
-#include <cassert>
-#include <cstddef>
-#include <cstring>
-#include <memory>
 #include <mutex>
-#include <thread>
 #include <vector>
 #include "nvbit.h"
 #include "utils/ring_buffer.h"
 
 namespace notrace {
 
-using MessageConsumer = void (*)(void* data, size_t size);
-
-struct alignas(8) MPSCMessageHeader {
+#pragma pack(push, 1)
+struct MPSCMessageHeader {
   nvbit_api_cuda_t api_type;
   uint32_t size;
 };
+#pragma pack(pop)
 
 class MPSCMessageQueue {
- private:
-  std::vector<ThreadLocalRingBuffer*> buffers_;
-  std::mutex registryMutex_;
-
-  std::vector<MessageConsumer> consumers_;
-
  public:
-  MPSCMessageQueue() = default;
-
-  ~MPSCMessageQueue();
-
-  // producer API
-  ThreadLocalRingBuffer* getThreadLocalBuffer();
-
-  template <typename T = void>
-  T* reserveMessage(nvbit_api_cuda_t type) {
-    return reinterpret_cast<T*>(this->reserveBytes(type, sizeof(T)));
+  static MPSCMessageQueue& getInstance() {
+    static MPSCMessageQueue instance;
+    return instance;
   }
 
-  void* reserveBytes(nvbit_api_cuda_t type, size_t payloadSize);
+  ThreadLocalRingBuffer* getThreadLocalBuffer();
 
-  void commitMessage();
-
-  // consumer API
+  using MessageConsumer = void (*)(void* data, size_t size);
   void registerConsumer(nvbit_api_cuda_t type, MessageConsumer consumer);
-
   size_t processUpdates();
+
+ private:
+  MPSCMessageQueue() = default;
+  ~MPSCMessageQueue();
+  MPSCMessageQueue(const MPSCMessageQueue&) = delete;
+  MPSCMessageQueue& operator=(const MPSCMessageQueue&) = delete;
+
+  std::vector<ThreadLocalRingBuffer*> buffers_;
+  std::mutex registryMutex_;
+  std::vector<MessageConsumer> consumers_;
+};
+
+class TraceProducer {
+ public:
+  template <typename T>
+  T* reserve(nvbit_api_cuda_t type) {
+    if (buffer_ == nullptr) [[unlikely]] {
+      initialize();
+    }
+
+    size_t totalSize = sizeof(T) + sizeof(MPSCMessageHeader);
+
+    void* reserved = buffer_->reserve(totalSize);
+    if (reserved == nullptr) {
+      return nullptr;
+    }
+    MPSCMessageHeader* header = reinterpret_cast<MPSCMessageHeader*>(reserved);
+    header->api_type = type;
+    header->size = sizeof(T);
+    return reinterpret_cast<T*>(header + 1);
+  }
+
+  void commit() { buffer_->commit(); }
+
+ private:
+  void initialize();
+
+  ThreadLocalRingBuffer* buffer_ = nullptr;
 };
 
 }  // namespace notrace
 
-#endif  // __NOTRACE_UTILS_MPSC_QUEUE_H__
+#endif
