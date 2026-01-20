@@ -9,6 +9,8 @@ namespace notrace {
 using cuda_event_handler_t = void(CUcontext, int, const char*, void*,
                                   CUresult*);
 
+void register_handlers();
+
 void register_cuda_event_handler(nvbit_api_cuda_t api_id,
                                  cuda_event_handler_t* handler);
 void unregister_cuda_event_handler(nvbit_api_cuda_t api_id);

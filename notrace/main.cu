@@ -1,9 +1,11 @@
 #include "cuda_event_handlers.h"
+#include "handlers/kernel_launch.h"
 #include "nvbit.h"
 #include "nvbit_tool.h"
 
 void nvbit_at_init() {
   printf("Tool is being loaded\n");
+  notrace::register_handlers();
 }
 
 void nvbit_at_cuda_event(CUcontext ctx, int is_exit, nvbit_api_cuda_t cbid,
@@ -18,6 +20,9 @@ void nvbit_at_cuda_event(CUcontext ctx, int is_exit, nvbit_api_cuda_t cbid,
 }
 
 void nvbit_at_term() {
+  cudaDeviceSynchronize();
+  notrace::printCompletedKernelLaunches();
+
   printf("Tool is being unloaded\n");
   fflush(stdout);
 }

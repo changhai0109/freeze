@@ -2,7 +2,10 @@
 #define __NOTRACE_KERNEL_LAUNCH_H__
 
 #include <cuda_runtime.h>
-#include <tuple>
+#include <stdint.h>
+#include <cstdio>
+#include <vector>
+
 #include "cuda_event_handlers.h"
 #include "generated_cuda_meta.h"
 #include "nvbit.h"
@@ -16,48 +19,23 @@ typedef struct {
   CUstream stream;
   CUcontext context;
 
-  uint64_t gpu_start_cycles;
-  uint64_t gpu_end_cycles;
+  uint64_t gpuStartCycles;
+  uint64_t gpuEndCycles;
 
-  uint32_t grid_x, grid_y, grid_z;
-  uint32_t block_x, block_y, block_z;
-  uint32_t shared_mem_bytes;
-} kernel_launch_info_t;
+  uint32_t gridX, gridY, gridZ;
+  uint32_t blockX, blockY, blockZ;
+  uint32_t sharedMemBytes;
+} KernelLaunchInfo;
 
-typedef struct {
-  uint64_t launch_id;
-  size_t record_index;
-} pending_kernel_t;
-
-typedef struct {
-  cudaEvent_t start;
-  cudaEvent_t end;
-} cuda_event_pair_t;
-
+// Per-stream anchor used to map CUDA event time -> host time
 typedef struct {
   cudaEvent_t t0;
   uint64_t host_t0_ns;
-} cuda_stream_clock_t;
+} CudaStreamClock;
 
-typedef struct {
-  cuda_event_pair_t events;
-  kernel_launch_info_t* rec;
-} KernelDonePayload;
+void handleKernelLaunch(CUcontext ctx, int device_id, const char* kernel_name,
+                        void* kernel_params, CUresult* pResult);
 
-class CudaEventPool {
- public:
-  cuda_event_pair_t acquire();
-  void release(cuda_event_pair_t pair);
-  ~CudaEventPool();
-
- private:
-  std::vector<cuda_event_pair_t> pool_;
-  static cuda_event_pair_t create_event_pair();
-};
-
-void handle_kernel_launch(CUcontext ctx, int device_id, const char* kernel_name,
-                          void* kernel_params, CUresult* pResult);
-
-};  // namespace notrace
+}  // namespace notrace
 
 #endif  // __NOTRACE_KERNEL_LAUNCH_H__

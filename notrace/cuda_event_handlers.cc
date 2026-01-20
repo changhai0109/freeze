@@ -1,4 +1,6 @@
 #include "cuda_event_handlers.h"
+#include "handlers/kernel_launch.h"
+#include "nvbit.h"
 
 using cuda_event_handler_t = notrace::cuda_event_handler_t;
 
@@ -22,4 +24,9 @@ notrace::cuda_event_handler_t* notrace::get_cuda_event_handler(
   } else {
     return nullptr;
   }
+}
+
+void notrace::register_handlers() {
+  register_cuda_event_handler(API_CUDA_cuLaunchKernel,
+                              &notrace::handleKernelLaunch);
 }
