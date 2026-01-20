@@ -2,7 +2,7 @@
 #define __NOTRACE_CUDA_EVENT_HANDLERS_H__
 
 #include <unordered_map>
-#include "nvbit.h"
+#include "common.h"
 
 namespace notrace {
 

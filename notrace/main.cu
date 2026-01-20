@@ -21,7 +21,6 @@ void nvbit_at_cuda_event(CUcontext ctx, int is_exit, nvbit_api_cuda_t cbid,
 
 void nvbit_at_term() {
   cudaDeviceSynchronize();
-  notrace::printCompletedKernelLaunches();
 
   printf("Tool is being unloaded\n");
   fflush(stdout);
