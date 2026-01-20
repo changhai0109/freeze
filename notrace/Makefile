@@ -20,7 +20,7 @@ NVCC_PATH = -L $(subst bin/nvcc,lib64,$(shell which nvcc | tr -s /))
 ARCH ?= all
 
 # ---- sources ----
-SRC_DIRS := . handlers
+SRC_DIRS := . handlers utils
 CC_SRC := $(foreach d,$(SRC_DIRS),$(wildcard $(d)/*.cc))
 CU_SRC := $(foreach d,$(SRC_DIRS),$(wildcard $(d)/*.cu))
 
@@ -43,14 +43,14 @@ $(NVBIT_TOOL): $(OBJECTS) $(NVBIT_PATH)/libnvbit.a
 
 # ---- compilation rules ----
 %.o: %.cu
-	$(NVCC) -dc -c -std=c++11 $(INCLUDES) \
+	$(NVCC) -dc -c -std=c++17 $(INCLUDES) \
 	    -Xptxas -cloning=no \
 	    -Xcompiler -Wall -Xcompiler -fPIC \
 	    -arch=$(ARCH) -O3 $< -o $@
 
 %.o: %.cc
-	$(CXX) -std=c++11 -Wall -fPIC $(INCLUDES) -O3 \
+	$(CXX) -std=c++17 -Wall -fPIC $(INCLUDES) -O3 \
 	    -c $< -o $@
 
 clean:
-	rm -f *.so *.o
+	rm -f *.so *.o */*.o
