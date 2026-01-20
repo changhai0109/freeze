@@ -2,9 +2,7 @@
 
 namespace notrace {
 
-StringStore stringStore;
-
-uint64_t StringStore::getStringId(const std::string& str) {
+StringId StringStore::getStringId(const std::string& str) {
   {
     std::shared_lock<std::shared_mutex> readLock(_mutex);
     auto it = _map.find(str);
@@ -20,7 +18,7 @@ uint64_t StringStore::getStringId(const std::string& str) {
     return it->second;
   }
 
-  uint64_t newId = _reverseMap.size();
+  StringId newId = _reverseMap.size();
   auto result = _map.emplace(str, newId);
 
   const std::string* keyPtr = &(result.first->first);
@@ -29,7 +27,7 @@ uint64_t StringStore::getStringId(const std::string& str) {
   return newId;
 }
 
-const std::string& StringStore::getStringFromId(uint64_t id) {
+const std::string& StringStore::getStringFromId(StringId id) {
   std::shared_lock<std::shared_mutex> readLock(_mutex);
   if (id < _reverseMap.size()) {
     return *(_reverseMap[id]);

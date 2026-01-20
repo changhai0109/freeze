@@ -9,21 +9,26 @@
 
 namespace notrace {
 
+using StringId = uint64_t;
 class StringStore {
  private:
-  std::unordered_map<std::string, uint64_t> _map;
+  std::unordered_map<std::string, StringId> _map;
   std::vector<const std::string*> _reverseMap;
   std::shared_mutex _mutex;
+  StringStore() { _reverseMap.reserve(1024); }
+  ~StringStore() = default;
+  StringStore(const StringStore&) = delete;
+  StringStore& operator=(const StringStore&) = delete;
 
  public:
-  StringStore() { _reverseMap.reserve(1024); }
-
-  uint64_t getStringId(const std::string& str);
-  const std::string& getStringFromId(uint64_t id);
+  static StringStore& getInstance() {
+    static StringStore instance;
+    return instance;
+  }
+  StringId getStringId(const std::string& str);
+  const std::string& getStringFromId(StringId id);
   std::vector<std::string> getSnapshot();
 };
-
-extern StringStore stringStore;
 
 }  // namespace notrace
 
