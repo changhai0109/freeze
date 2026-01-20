@@ -1,103 +1,54 @@
 #ifndef __NOTRACE_UTILS_MPSC_QUEUE_H__
 #define __NOTRACE_UTILS_MPSC_QUEUE_H__
 
-#include <sys/mman.h>
-#include <sys/types.h>
-#include <unistd.h>
-#include <atomic>
+#include <algorithm>
+#include <cassert>
 #include <cstddef>
-#include <iostream>
+#include <cstring>
+#include <memory>
 #include <mutex>
-#include <stdexcept>
+#include <thread>
 #include <vector>
 #include "nvbit.h"
+#include "utils/ring_buffer.h"
 
 namespace notrace {
 
-class MPSCMessageBuffer {
+using MessageConsumer = void (*)(void* data, size_t size);
+
+struct alignas(8) MPSCMessageHeader {
+  nvbit_api_cuda_t api_type;
+  uint32_t size;
+};
+
+class MPSCMessageQueue {
+ private:
+  std::vector<ThreadLocalRingBuffer*> buffers_;
+  std::mutex registryMutex_;
+
+  std::vector<MessageConsumer> consumers_;
+
  public:
-  static constexpr size_t BUFFER_SIZE = 10 * 1024 * 1024;
+  MPSCMessageQueue() = default;
 
-  uint8_t* data;
+  ~MPSCMessageQueue();
 
-  std::atomic<size_t> commitPos;
-  std::atomic<size_t> consumerPos;
+  // producer API
+  ThreadLocalRingBuffer* getThreadLocalBuffer();
 
-  size_t reservedPos;
-  size_t cachedConsumerPos;
-  bool pendingCommit;
-
-  MPSCMessageBuffer() {
-    initMagicBuffer();
-
-    commitPos.store(0, std::memory_order_relaxed);
-    consumerPos.store(0, std::memory_order_relaxed);
-    reservedPos = 0;
-    cachedConsumerPos = 0;
-    pendingCommit = false;
+  template <typename T = void>
+  T* reserveMessage(nvbit_api_cuda_t type) {
+    return reinterpret_cast<T*>(this->reserveBytes(type, sizeof(T)));
   }
 
-  ~MPSCMessageBuffer() { munmap(data, BUFFER_SIZE * 2); }
+  void* reserveBytes(nvbit_api_cuda_t type, size_t payloadSize);
 
-  void initMagicBuffer() {
-    int fd = memfd_create("nvbit_ring_buffer", 0);
-    if (fd < 0)
-      throw std::runtime_error("memfd_create failed");
+  void commitMessage();
 
-    if (ftruncate(fd, BUFFER_SIZE) < 0)
-      throw std::runtime_error("ftruncate failed");
+  // consumer API
+  void registerConsumer(nvbit_api_cuda_t type, MessageConsumer consumer);
 
-    uint8_t* base_ptr = (uint8_t*)mmap(nullptr, 2 * BUFFER_SIZE, PROT_NONE,
-                                       MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    if (base_ptr == MAP_FAILED)
-      throw std::runtime_error("Reserve mmap failed");
-
-    void* ptr1 = mmap(base_ptr, BUFFER_SIZE, PROT_READ | PROT_WRITE,
-                      MAP_SHARED | MAP_FIXED, fd, 0);
-
-    void* ptr2 = mmap(base_ptr + BUFFER_SIZE, BUFFER_SIZE,
-                      PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, fd, 0);
-
-    if (ptr1 == MAP_FAILED || ptr2 == MAP_FAILED)
-      throw std::runtime_error("Magic mmap failed");
-
-    close(fd);
-    data = base_ptr;
-  }
-
-  void* reserve(size_t size) {
-    if (pendingCommit)
-      return nullptr;
-    if (size > BUFFER_SIZE / 2)
-      return nullptr;  // Sanity check
-
-    size_t head = reservedPos;
-    size_t tail = cachedConsumerPos;
-
-    size_t used = head - tail;
-
-    if (used + size > BUFFER_SIZE) {
-      tail = consumerPos.load(std::memory_order_acquire);
-      cachedConsumerPos = tail;
-      used = head - tail;
-
-      if (used + size > BUFFER_SIZE) {
-        return nullptr;  // Buffer is legitimately full
-      }
-    }
-
-    reservedPos += size;
-    pendingCommit = true;
-
-    return data + (head % BUFFER_SIZE);
-  }
-
-  void commit() {
-    if (!pendingCommit) [[unlikely]]
-      throw std::runtime_error("No commit pending");
-    commitPos.store(reservedPos, std::memory_order_release);
-    pendingCommit = false;
-  }
+  size_t processUpdates();
 };
 
 }  // namespace notrace
