@@ -1,33 +1,28 @@
 #include "utils/event_pool.h"
-#include "utils/cuda_safecall.h"
+#include <iostream>
 
-CudaEventPair CudaEventPool::acquire() {
-  // Caller must synchronize externally if used across threads.
-  if (pool_.empty())
-    return createEventPair();
+cudaEvent_t CudaEventPool::acquire() {
+  std::lock_guard<std::mutex> lock(mutex_);  // Lock happens here
 
-  CudaEventPair pair = pool_.back();
-  pool_.pop_back();
-  return pair;
+  if (!pool_.empty()) {
+    cudaEvent_t evt = pool_.back();
+    pool_.pop_back();
+    return evt;
+  }
+
+  // Pool empty? Create new one.
+  cudaEvent_t new_evt;
+  cudaEventCreate(&new_evt);  // Add error checking in real code
+  return new_evt;
 }
 
-void CudaEventPool::release(CudaEventPair pair) {
-  pool_.push_back(pair);
+void CudaEventPool::release(cudaEvent_t event) {
+  std::lock_guard<std::mutex> lock(mutex_);  // Lock happens here
+  pool_.push_back(event);
 }
 
 CudaEventPool::~CudaEventPool() {
-  for (auto& pair : pool_) {
-    CUDA_SAFECALL(cudaEventDestroy(pair.start));
-    CUDA_SAFECALL(cudaEventDestroy(pair.end));
+  for (auto e : pool_) {
+    cudaEventDestroy(e);
   }
-  pool_.clear();
-}
-
-CudaEventPair CudaEventPool::createEventPair() {
-  CudaEventPair pair{};
-
-  CUDA_SAFECALL(cudaEventCreateWithFlags(&pair.start, cudaEventDefault));
-  CUDA_SAFECALL(cudaEventCreateWithFlags(&pair.end, cudaEventDefault));
-
-  return pair;
 }

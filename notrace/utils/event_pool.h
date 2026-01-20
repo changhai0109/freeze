@@ -2,26 +2,28 @@
 #define NOTRACE_UTILS_EVENT_POOL_H__
 
 #include <cuda_runtime.h>
+#include <mutex>
 #include <vector>
-
-// ----------------------------------
-// CUDA event helpers
-// ----------------------------------
-typedef struct {
-  cudaEvent_t start;
-  cudaEvent_t end;
-} CudaEventPair;
 
 class CudaEventPool {
  public:
-  CudaEventPair acquire();
-  void release(CudaEventPair pair);
-  ~CudaEventPool();
+  CudaEventPool(const CudaEventPool&) = delete;
+  CudaEventPool& operator=(const CudaEventPool&) = delete;
 
-  static CudaEventPair createEventPair();
+  static CudaEventPool& getInstance() {
+    static CudaEventPool instance;
+    return instance;
+  }
+
+  cudaEvent_t acquire();
+  void release(cudaEvent_t event);
 
  private:
-  std::vector<CudaEventPair> pool_;
+  CudaEventPool() = default;
+  ~CudaEventPool();
+
+  std::vector<cudaEvent_t> pool_;
+  std::mutex mutex_;
 };
 
-#endif  // NOTRACE_UTILS_EVENT_POOL_H__
+#endif
