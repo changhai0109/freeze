@@ -1,6 +1,7 @@
 #include "utils/mpsc_queue.h"
 #include <algorithm>
 #include <iostream>
+#include "handlers/kernel_launch.h"
 
 namespace notrace {
 
@@ -67,7 +68,7 @@ size_t MPSCMessageQueue::processUpdates() {
         MessageConsumer consumer = this->consumers_[header->api_type];
         if (consumer != nullptr) {
           void* payload = reinterpret_cast<void*>(header + 1);
-          consumer(payload, header->size);
+          consumer->process(payload, header->size);
         }
       }
 
@@ -78,7 +79,10 @@ size_t MPSCMessageQueue::processUpdates() {
   return total_bytes;
 }
 
-inline void TraceProducer::initialize() {
-  buffer_ = MPSCMessageQueue::getInstance().getThreadLocalBuffer();
+void MPSCMessageQueue::registerConsumers() {
+  static kernel_launch::KernelLaunchConsumer kernelLaunchConsumer;
+  this->registerConsumer(nvbit_api_cuda_t::API_CUDA_cuLaunchKernel,
+                         &kernelLaunchConsumer);
 }
+
 }  // namespace notrace

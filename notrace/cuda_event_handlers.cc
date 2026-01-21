@@ -29,4 +29,6 @@ notrace::cuda_event_handler_t* notrace::get_cuda_event_handler(
 void notrace::register_handlers() {
   // register_cuda_event_handler(API_CUDA_cuLaunchKernel,
   // &notrace::handleKernelLaunch);
+  register_cuda_event_handler(API_CUDA_cuLaunchKernel,
+                              notrace::kernel_launch::kernelLaunchHookWrapper);
 }

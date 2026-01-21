@@ -3,7 +3,8 @@
 
 #include <mutex>
 #include <vector>
-#include "nvbit.h"
+#include "common.h"
+#include "handlers/base_handler.h"
 #include "utils/ring_buffer.h"
 
 namespace notrace {
@@ -24,8 +25,9 @@ class MPSCMessageQueue {
 
   ThreadLocalRingBuffer* getThreadLocalBuffer();
 
-  using MessageConsumer = void (*)(void* data, size_t size);
+  using MessageConsumer = TraceConsumer*;
   void registerConsumer(nvbit_api_cuda_t type, MessageConsumer consumer);
+  void registerConsumers();
   size_t processUpdates();
 
  private:
@@ -39,7 +41,7 @@ class MPSCMessageQueue {
   std::vector<MessageConsumer> consumers_;
 };
 
-class TraceProducer {
+class MessageWritter {
  public:
   template <typename T>
   T* reserve(nvbit_api_cuda_t type) {
@@ -62,7 +64,9 @@ class TraceProducer {
   void commit() { buffer_->commit(); }
 
  private:
-  void initialize();
+  void initialize() {
+    buffer_ = MPSCMessageQueue::getInstance().getThreadLocalBuffer();
+  };
 
   ThreadLocalRingBuffer* buffer_ = nullptr;
 };
