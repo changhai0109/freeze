@@ -1,19 +1,21 @@
-#ifndef __NOTRACE_KERNEL_LAUNCH_H__
-#define __NOTRACE_KERNEL_LAUNCH_H__
-
-#include <stdint.h>
-#include <cstdio>
-#include <vector>
+#ifndef __NOTRACE_HANDLERS_KERNEL_LAUNCH_H__
+#define __NOTRACE_HANDLERS_KERNEL_LAUNCH_H__
 
 #include <cuda.h>
 #include <cuda_runtime.h>
-#include "cuda_event_handlers.h"
+#include <cstdint>
+#include <unordered_map>
+#include <vector>
+
+#include "common.h"
+#include "handlers/base_handler.h"  // Include the new base definitions
 #include "nvbit.h"
 #include "utils/string_store.h"
 
 namespace notrace {
 namespace kernel_launch {
 
+// Message Type Constants
 const uint8_t MESSAGE_TYPE_KERNEL_START = 1;
 const uint8_t MESSAGE_TYPE_KERNEL_END = 2;
 const uint8_t MESSAGE_TYPE_KERNEL_PROCESSED = 4;
@@ -45,7 +47,7 @@ typedef struct {
 #pragma pack(push, 1)
 typedef struct {
   uint8_t messageType;
-  std::string kernelName;
+  StringId kernelNameId;
   uint64_t launchId;
   uint64_t gpuStartCycles;
   uint64_t gpuEndCycles;
@@ -59,12 +61,45 @@ typedef struct {
 } KernelLaunchRecord;
 #pragma pack(pop)
 
-void kernelLaunchHook(CUcontext ctx, int is_exit, const char* name,
-                      void* params, CUresult* pStatus);
+/**
+ * Producer: Hooks into CUDA driver calls, captures arguments, 
+ * acquires events, and writes Start/End messages to the queue.
+ */
+class KernelLaunchProducer : public TraceProducer {
+ private:
+  void onStartHook(CUcontext ctx, const char* name, void* params,
+                   CUresult* pStatus) override;
 
-void process(void* data);
+  void onEndHook(CUcontext ctx, const char* name, void* params,
+                 CUresult* pStatus) override;
+};
+
+/**
+ * Consumer: Reads Start/End messages.
+ * It waits for the End message, calculates GPU duration using events,
+ * and produces a final "Processed" record.
+ */
+class KernelLaunchConsumer : public TraceConsumer {
+ public:
+  KernelLaunchConsumer() = default;
+  ~KernelLaunchConsumer();  // Cleanup leftover map entries
+
+  void process(void* data, size_t size) override;
+
+ private:
+  void processStart(KernelLaunchStartInfo* msg);
+  void processEnd(KernelLaunchEndInfo* msg);
+  void processRecord(KernelLaunchRecord* msg);
+
+  // Correlation map to match Start events with End events.
+  // Owned by the consumer instance (single-threaded access assumed in processUpdates)
+  std::unordered_map<uint64_t, KernelLaunchStartInfo*> pending_launches_;
+};
+
+void kernelLaunchHookWrapper(CUcontext ctx, int is_exit, const char* name,
+                             void* params, CUresult* pStatus);
 
 }  // namespace kernel_launch
 }  // namespace notrace
 
-#endif  // __NOTRACE_KERNEL_LAUNCH_H__
+#endif  // __NOTRACE_HANDLERS_KERNEL_LAUNCH_H__
