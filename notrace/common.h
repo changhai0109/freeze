@@ -1,7 +1,7 @@
 #ifndef __NOTRACE_COMMON_H__
 #define __NOTRACE_COMMON_H__
 
-#include <cuda.h>
+#include "cuda.h"
 #if CUDA_VERSION >= 12000
 // CUdeviceptr_v1 was removed in CUDA 12, but NVBit needs it.
 // We define it as CUdeviceptr (unsigned long long)
