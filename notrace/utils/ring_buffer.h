@@ -10,7 +10,7 @@
 #include <mutex>
 #include <stdexcept>
 #include <vector>
-#include "nvbit.h"
+#include "common.h"
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
