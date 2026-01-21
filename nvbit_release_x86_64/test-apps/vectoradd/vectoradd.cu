@@ -28,7 +28,7 @@ __global__ void vecAdd(double *a, double *b, double *c, int n) {
 
 int main(int argc, char *argv[]) {
     // Size of vectors
-    int n = 100000;
+    int n = 100000000;
     if (argc > 1) n = atoi(argv[1]);
 
     // Host input vectors
@@ -78,7 +78,11 @@ int main(int argc, char *argv[]) {
     gridSize = (int)ceil((float)n / blockSize);
 
     // Execute the kernel
-    CUDA_SAFECALL((vecAdd<<<gridSize, blockSize>>>(d_a, d_b, d_c, n)));
+    for (int iter = 0; iter < 50; iter++)
+        CUDA_SAFECALL((vecAdd<<<gridSize, blockSize>>>(d_a, d_b, d_c, n)));
+    cudaDeviceSynchronize();
+    for (int iter = 0; iter < 10; iter++)
+        CUDA_SAFECALL((vecAdd<<<gridSize, blockSize>>>(d_a, d_b, d_c, n)));
 
     // Copy array back to host
     cudaMemcpy(h_c, d_c, bytes, cudaMemcpyDeviceToHost);

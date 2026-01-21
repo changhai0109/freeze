@@ -1,4 +1,4 @@
-ARCH=sm_70
+ARCH=all
 
 all:
 	nvcc -ccbin=$(CXX) -O3 -arch=$(ARCH) vectoradd.cu -o vectoradd
