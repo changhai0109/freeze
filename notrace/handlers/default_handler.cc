@@ -53,10 +53,10 @@ void DefaultHandlerConsumer::processImpl(void* data, size_t size) {
 
   switch (msg->messageType) {
     case MESSAGE_TYPE_START:
-      // printf("CUDA API ENTER: %s", apiName);
+      printf("CUDA API ENTER: %s", apiName);
       break;
     case MESSAGE_TYPE_END:
-      // printf("CUDA API EXIT: %s", apiName);
+      printf("CUDA API EXIT: %s", apiName);
       break;
     default:
       assert(false && "Invalid message type in DefaultHandlerConsumer");
