@@ -47,6 +47,7 @@ inline uint64_t getCurrentLaunchId() {
 
 void KernelLaunchProducer::onStartHook(CUcontext ctx, const char* name,
                                        void* params, CUresult* pStatus) {
+  // printf("KernelLaunchProducer::onStartHook called for %s\n", name);
   uint64_t launchId = getAndSaveLaunchId();
 
   // Reserve space in the queue
@@ -87,6 +88,7 @@ void KernelLaunchProducer::onStartHook(CUcontext ctx, const char* name,
 
 void KernelLaunchProducer::onEndHook(CUcontext ctx, const char* name,
                                      void* params, CUresult* pStatus) {
+  // printf("KernelLaunchProducer::onEndHook called for %s\n", name);
   uint64_t launchId = getCurrentLaunchId();
 
   auto* msg = messageWritter.reserve<KernelLaunchEndInfo>(
@@ -123,7 +125,7 @@ KernelLaunchConsumer::~KernelLaunchConsumer() {
   pending_launches_.clear();
 }
 
-void KernelLaunchConsumer::process(void* data, size_t size) {
+void KernelLaunchConsumer::processImpl(void* data, size_t size) {
   uint8_t messageType = *(uint8_t*)data;
 
   switch (messageType) {

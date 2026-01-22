@@ -84,7 +84,7 @@ class KernelLaunchConsumer : public TraceConsumer {
   KernelLaunchConsumer() = default;
   ~KernelLaunchConsumer();  // Cleanup leftover map entries
 
-  void process(void* data, size_t size) override;
+  void processImpl(void* data, size_t size) override;
 
  private:
   void processStart(KernelLaunchStartInfo* msg);

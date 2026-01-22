@@ -5,6 +5,7 @@
 #include <vector>
 #include "common.h"
 #include "handlers/base_handler.h"
+#include "handlers/default_handler.h"
 #include "utils/ring_buffer.h"
 
 namespace notrace {
@@ -35,6 +36,9 @@ class MPSCMessageQueue {
   ~MPSCMessageQueue();
   MPSCMessageQueue(const MPSCMessageQueue&) = delete;
   MPSCMessageQueue& operator=(const MPSCMessageQueue&) = delete;
+
+  MessageConsumer defaultConsumer_ =
+      new default_handler::DefaultHandlerConsumer();
 
   std::vector<ThreadLocalRingBuffer*> buffers_;
   std::mutex registryMutex_;

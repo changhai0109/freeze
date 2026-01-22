@@ -1,6 +1,7 @@
 #include "utils/mpsc_queue.h"
 #include <algorithm>
 #include <iostream>
+#include "handlers/default_handler.h"
 #include "handlers/kernel_launch.h"
 
 namespace notrace {
@@ -11,6 +12,8 @@ MPSCMessageQueue::~MPSCMessageQueue() {
     delete buf;
   }
   buffers_.clear();
+
+  delete this->defaultConsumer_;
 }
 
 ThreadLocalRingBuffer* MPSCMessageQueue::getThreadLocalBuffer() {
@@ -66,10 +69,15 @@ size_t MPSCMessageQueue::processUpdates() {
 
       if (header->api_type < this->consumers_.size()) {
         MessageConsumer consumer = this->consumers_[header->api_type];
-        if (consumer != nullptr) {
-          void* payload = reinterpret_cast<void*>(header + 1);
-          consumer->process(payload, header->size);
+        // printf("Processing message of type %d, size %u\n, consumer %p",
+        //  header->api_type, header->size, (void*)consumer);
+
+        fflush(stdout);
+        if (consumer == nullptr) {
+          consumer = this->defaultConsumer_;
         }
+        void* payload = reinterpret_cast<void*>(header + 1);
+        consumer->process(payload, header->size);
       }
 
       buf->advance(message_size);
