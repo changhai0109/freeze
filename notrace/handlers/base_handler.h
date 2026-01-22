@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include "cuda.h"
+#include "utils/api_call_flaggers.h"
 
 namespace notrace {
 class TraceConsumer {
@@ -24,11 +25,18 @@ class TraceProducer {
 
   virtual void kernelLaunchHook(CUcontext ctx, int is_exit, const char* name,
                                 void* params, CUresult* pStatus) {
+    auto& flaggers = ThreadLocalApiCallFlaggers::getInstance();
+    if (flaggers.isApiCallInProgress()) {
+      // Nested API call detected, skip tracing to avoid recursion
+      return;
+    }
+    flaggers.setApiCallInProgress();
     if (is_exit) {
       onEndHook(ctx, name, params, pStatus);
     } else {
       onStartHook(ctx, name, params, pStatus);
     }
+    flaggers.resetApiCallInProgress();
   }
 
  private:
