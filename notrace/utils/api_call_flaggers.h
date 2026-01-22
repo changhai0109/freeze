@@ -13,15 +13,11 @@ class ThreadLocalApiCallFlaggers {
     return instance;
   }
 
-  void setApiCallInProgress() { depth++; }
+  void setApiCallInProgress();
 
-  void resetApiCallInProgress() {
-    if (depth > 0) {
-      depth--;
-    }
-  }
+  void resetApiCallInProgress();
 
-  bool isApiCallInProgress() const { return depth > 0; }
+  bool isApiCallInProgress() const;
 
  private:
   ThreadLocalApiCallFlaggers() { depth = 0u; };
