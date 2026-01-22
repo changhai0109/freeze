@@ -2,7 +2,8 @@
 #include <algorithm>
 #include <iostream>
 #include "handlers/default_handler.h"
-#include "handlers/kernel_launch.h"
+#include "handlers/launch_kernel.h"
+#include "handlers/mem_alloc.h"
 
 namespace notrace {
 
@@ -100,9 +101,14 @@ size_t MPSCMessageQueue::processUpdates() {
 }
 
 void MPSCMessageQueue::registerConsumers() {
-  static kernel_launch::KernelLaunchConsumer kernelLaunchConsumer;
+  static kernel_launch::LaunchKernelConsumer kernelLaunchConsumer;
+  static mem_alloc::MemAllocConsumer memAllocConsumer;
   this->registerConsumer(nvbit_api_cuda_t::API_CUDA_cuLaunchKernel,
                          &kernelLaunchConsumer);
+  this->registerConsumer(nvbit_api_cuda_t::API_CUDA_cuMemAlloc_v2,
+                         &memAllocConsumer);
+  this->registerConsumer(nvbit_api_cuda_t::API_CUDA_cuMemAlloc,
+                         &memAllocConsumer);
 }
 
 }  // namespace notrace

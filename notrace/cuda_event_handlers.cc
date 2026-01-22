@@ -1,6 +1,7 @@
 #include "cuda_event_handlers.h"
 #include "handlers/default_handler.h"
-#include "handlers/kernel_launch.h"
+#include "handlers/launch_kernel.h"
+#include "handlers/mem_alloc.h"
 #include "nvbit.h"
 
 using cuda_event_handler_t = notrace::cuda_event_handler_t;
@@ -39,5 +40,9 @@ void notrace::register_handlers() {
   // register_cuda_event_handler(API_CUDA_cuLaunchKernel,
   // &notrace::handleKernelLaunch);
   register_cuda_event_handler(API_CUDA_cuLaunchKernel,
-                              notrace::kernel_launch::kernelLaunchHookWrapper);
+                              notrace::kernel_launch::launchKernelHookWrapper);
+  register_cuda_event_handler(API_CUDA_cuMemAlloc_v2,
+                              notrace::mem_alloc::memAllocHookWrapper);
+  register_cuda_event_handler(API_CUDA_cuMemAlloc,
+                              notrace::mem_alloc::memAllocHookWrapper);
 }

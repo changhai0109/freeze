@@ -67,7 +67,7 @@ void DefaultHandlerConsumer::processImpl(void* data, size_t size) {
 void defaultHandlerHookWrapper(CUcontext ctx, int is_exit, const char* name,
                                void* params, CUresult* pStatus) {
   // Forward the C-style call to the C++ Class instance
-  defaultHandlerProducer.kernelLaunchHook(ctx, is_exit, name, params, pStatus);
+  defaultHandlerProducer.apiHook(ctx, is_exit, name, params, pStatus);
 }
 
 void setCBID(nvbit_api_cuda_t cbid_) {

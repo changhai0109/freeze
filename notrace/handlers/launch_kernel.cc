@@ -1,4 +1,4 @@
-#include "handlers/kernel_launch.h"
+#include "handlers/launch_kernel.h"
 
 #include <atomic>
 #include <cassert>
@@ -29,7 +29,7 @@ StringStore& stringStore = StringStore::getInstance();
 // Thread-local writer for the PRODUCER threads (Application threads)
 static thread_local MessageWritter messageWritter;
 
-static KernelLaunchProducer globalKernelProducer;
+static LaunchKernelProducer globalKernelProducer;
 
 // Helpers for ID generation
 inline uint64_t getAndSaveLaunchId() {
@@ -45,13 +45,13 @@ inline uint64_t getCurrentLaunchId() {
 // KernelLaunchProducer Implementation
 // =============================================================================
 
-void KernelLaunchProducer::onStartHook(CUcontext ctx, const char* name,
+void LaunchKernelProducer::onStartHook(CUcontext ctx, const char* name,
                                        void* params, CUresult* pStatus) {
   // printf("KernelLaunchProducer::onStartHook called for %s\n", name);
   uint64_t launchId = getAndSaveLaunchId();
 
   // Reserve space in the queue
-  auto* msg = messageWritter.reserve<KernelLaunchStartInfo>(
+  auto* msg = messageWritter.reserve<LaunchKernelStartInfo>(
       nvbit_api_cuda_t::API_CUDA_cuLaunchKernel);
 
   if (msg == nullptr) [[unlikely]] {
@@ -86,12 +86,12 @@ void KernelLaunchProducer::onStartHook(CUcontext ctx, const char* name,
   messageWritter.commit();
 }
 
-void KernelLaunchProducer::onEndHook(CUcontext ctx, const char* name,
+void LaunchKernelProducer::onEndHook(CUcontext ctx, const char* name,
                                      void* params, CUresult* pStatus) {
   // printf("KernelLaunchProducer::onEndHook called for %s\n", name);
   uint64_t launchId = getCurrentLaunchId();
 
-  auto* msg = messageWritter.reserve<KernelLaunchEndInfo>(
+  auto* msg = messageWritter.reserve<LaunchKernelEndInfo>(
       nvbit_api_cuda_t::API_CUDA_cuLaunchKernel);
 
   if (msg == nullptr) [[unlikely]] {
@@ -115,7 +115,7 @@ void KernelLaunchProducer::onEndHook(CUcontext ctx, const char* name,
 // KernelLaunchConsumer Implementation
 // =============================================================================
 
-KernelLaunchConsumer::~KernelLaunchConsumer() {
+LaunchKernelConsumer::~LaunchKernelConsumer() {
   // Cleanup any pending start info structs to avoid memory leaks
   for (auto& pair : pending_launches_) {
     // Technically we should also release events here if they weren't processed
@@ -125,30 +125,30 @@ KernelLaunchConsumer::~KernelLaunchConsumer() {
   pending_launches_.clear();
 }
 
-void KernelLaunchConsumer::processImpl(void* data, size_t size) {
+void LaunchKernelConsumer::processImpl(void* data, size_t size) {
   uint8_t messageType = *(uint8_t*)data;
 
   switch (messageType) {
     case MESSAGE_TYPE_KERNEL_START:
-      if (size != sizeof(KernelLaunchStartInfo)) {
+      if (size != sizeof(LaunchKernelStartInfo)) {
         assert(false && "Invalid size for KernelLaunchStartInfo");
         return;
       }
-      processStart(reinterpret_cast<KernelLaunchStartInfo*>(data));
+      processStart(reinterpret_cast<LaunchKernelStartInfo*>(data));
       break;
     case MESSAGE_TYPE_KERNEL_END:
-      if (size != sizeof(KernelLaunchEndInfo)) {
+      if (size != sizeof(LaunchKernelEndInfo)) {
         assert(false && "Invalid size for KernelLaunchEndInfo");
         return;
       }
-      processEnd(reinterpret_cast<KernelLaunchEndInfo*>(data));
+      processEnd(reinterpret_cast<LaunchKernelEndInfo*>(data));
       break;
     case MESSAGE_TYPE_KERNEL_PROCESSED:
-      if (size != sizeof(KernelLaunchRecord)) {
+      if (size != sizeof(LaunchKernelRecord)) {
         assert(false && "Invalid size for KernelLaunchRecord");
         return;
       }
-      processRecord(reinterpret_cast<KernelLaunchRecord*>(data));
+      processRecord(reinterpret_cast<LaunchKernelRecord*>(data));
       break;
     default:
       assert(false && "Unknown message type in KernelLaunchConsumer");
@@ -156,7 +156,7 @@ void KernelLaunchConsumer::processImpl(void* data, size_t size) {
   }
 }
 
-void KernelLaunchConsumer::processStart(KernelLaunchStartInfo* startInfo) {
+void LaunchKernelConsumer::processStart(LaunchKernelStartInfo* startInfo) {
   if (pending_launches_.find(startInfo->launchId) != pending_launches_.end()) {
     assert(false && "Duplicate launch ID detected");
     return;
@@ -165,18 +165,18 @@ void KernelLaunchConsumer::processStart(KernelLaunchStartInfo* startInfo) {
   // Persist the start info.
   // We MUST copy it because the original 'msg' pointer points to the RingBuffer,
   // which will be overwritten as soon as we return from process().
-  KernelLaunchStartInfo* startInfoCopy = new KernelLaunchStartInfo(*startInfo);
+  LaunchKernelStartInfo* startInfoCopy = new LaunchKernelStartInfo(*startInfo);
   pending_launches_[startInfo->launchId] = startInfoCopy;
 }
 
-void KernelLaunchConsumer::processEnd(KernelLaunchEndInfo* endInfo) {
+void LaunchKernelConsumer::processEnd(LaunchKernelEndInfo* endInfo) {
   if (cudaEventQuery(endInfo->endEvent) == cudaErrorNotReady) {
     // The end event has not yet been recorded by the GPU.
     // Re-enqueue the end message for later processing.
-    void* newMsg = messageWritter.reserve<KernelLaunchEndInfo>(
+    void* newMsg = messageWritter.reserve<LaunchKernelEndInfo>(
         nvbit_api_cuda_t::API_CUDA_cuLaunchKernel);
     assert(newMsg && "Failed to re-reserve end message");
-    *static_cast<KernelLaunchEndInfo*>(newMsg) = *endInfo;
+    *static_cast<LaunchKernelEndInfo*>(newMsg) = *endInfo;
     messageWritter.commit();  // Re-commit the same message
     // std::this_thread::sleep_for(
     //     std::chrono::microseconds(100));  // Backoff to avoid busy looping
@@ -193,7 +193,7 @@ void KernelLaunchConsumer::processEnd(KernelLaunchEndInfo* endInfo) {
     return;
   }
 
-  KernelLaunchStartInfo* startInfo = it->second;
+  LaunchKernelStartInfo* startInfo = it->second;
 
   // 1. Calculate GPU Duration
   // Note: cudaEventElapsedTime syncs the CPU thread until GPU records the event.
@@ -205,7 +205,7 @@ void KernelLaunchConsumer::processEnd(KernelLaunchEndInfo* endInfo) {
   // 2. Generate the "Processed" Record
   // The Consumer acts as a Producer here! It writes back to the queue.
   // Note: We use the same traceWriter mechanism.
-  auto* record = messageWritter.reserve<KernelLaunchRecord>(
+  auto* record = messageWritter.reserve<LaunchKernelRecord>(
       nvbit_api_cuda_t::API_CUDA_cuLaunchKernel);
 
   if (record) {
@@ -235,7 +235,7 @@ void KernelLaunchConsumer::processEnd(KernelLaunchEndInfo* endInfo) {
   pending_launches_.erase(it);
 }
 
-void KernelLaunchConsumer::processRecord(KernelLaunchRecord* msg) {
+void LaunchKernelConsumer::processRecord(LaunchKernelRecord* msg) {
   printf(
       "KernelLaunchRecord: Name=%s, Duration=%.3f ns, grid=(%u,%u,%u), "
       "block=(%u,%u,%u)\n",
@@ -244,10 +244,10 @@ void KernelLaunchConsumer::processRecord(KernelLaunchRecord* msg) {
       msg->blockX, msg->blockY, msg->blockZ);
 }
 
-void kernelLaunchHookWrapper(CUcontext ctx, int is_exit, const char* name,
+void launchKernelHookWrapper(CUcontext ctx, int is_exit, const char* name,
                              void* params, CUresult* pStatus) {
   // Forward the C-style call to the C++ Class instance
-  globalKernelProducer.kernelLaunchHook(ctx, is_exit, name, params, pStatus);
+  globalKernelProducer.apiHook(ctx, is_exit, name, params, pStatus);
 }
 
 }  // namespace kernel_launch

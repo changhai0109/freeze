@@ -29,8 +29,8 @@ class TraceProducer {
   TraceProducer(const TraceProducer&) = delete;
   TraceProducer& operator=(const TraceProducer&) = delete;
 
-  virtual void kernelLaunchHook(CUcontext ctx, int is_exit, const char* name,
-                                void* params, CUresult* pStatus) {
+  virtual void apiHook(CUcontext ctx, int is_exit, const char* name,
+                       void* params, CUresult* pStatus) {
     auto& flaggers = ThreadLocalApiCallFlaggers::getInstance();
     if (flaggers.isApiCallInProgress()) {
       // Nested API call detected, skip tracing to avoid recursion

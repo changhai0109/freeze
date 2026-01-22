@@ -33,7 +33,7 @@ typedef struct {
   uint32_t gridX, gridY, gridZ;
   uint32_t blockX, blockY, blockZ;
   uint32_t sharedMemBytes;
-} KernelLaunchStartInfo;
+} LaunchKernelStartInfo;
 #pragma pack(pop)
 
 #pragma pack(push, 1)
@@ -41,7 +41,7 @@ typedef struct {
   uint8_t messageType;
   uint64_t launchId;
   cudaEvent_t endEvent;
-} KernelLaunchEndInfo;
+} LaunchKernelEndInfo;
 #pragma pack(pop)
 
 #pragma pack(push, 1)
@@ -58,14 +58,14 @@ typedef struct {
   uint32_t gridX, gridY, gridZ;
   uint32_t blockX, blockY, blockZ;
   uint32_t sharedMemBytes;
-} KernelLaunchRecord;
+} LaunchKernelRecord;
 #pragma pack(pop)
 
 /**
  * Producer: Hooks into CUDA driver calls, captures arguments, 
  * acquires events, and writes Start/End messages to the queue.
  */
-class KernelLaunchProducer : public TraceProducer {
+class LaunchKernelProducer : public TraceProducer {
  private:
   void onStartHook(CUcontext ctx, const char* name, void* params,
                    CUresult* pStatus) override;
@@ -79,24 +79,24 @@ class KernelLaunchProducer : public TraceProducer {
  * It waits for the End message, calculates GPU duration using events,
  * and produces a final "Processed" record.
  */
-class KernelLaunchConsumer : public TraceConsumer {
+class LaunchKernelConsumer : public TraceConsumer {
  public:
-  KernelLaunchConsumer() = default;
-  ~KernelLaunchConsumer();  // Cleanup leftover map entries
+  LaunchKernelConsumer() = default;
+  ~LaunchKernelConsumer();  // Cleanup leftover map entries
 
   void processImpl(void* data, size_t size) override;
 
  private:
-  void processStart(KernelLaunchStartInfo* msg);
-  void processEnd(KernelLaunchEndInfo* msg);
-  void processRecord(KernelLaunchRecord* msg);
+  void processStart(LaunchKernelStartInfo* msg);
+  void processEnd(LaunchKernelEndInfo* msg);
+  void processRecord(LaunchKernelRecord* msg);
 
   // Correlation map to match Start events with End events.
   // Owned by the consumer instance (single-threaded access assumed in processUpdates)
-  std::unordered_map<uint64_t, KernelLaunchStartInfo*> pending_launches_;
+  std::unordered_map<uint64_t, LaunchKernelStartInfo*> pending_launches_;
 };
 
-void kernelLaunchHookWrapper(CUcontext ctx, int is_exit, const char* name,
+void launchKernelHookWrapper(CUcontext ctx, int is_exit, const char* name,
                              void* params, CUresult* pStatus);
 
 }  // namespace kernel_launch
