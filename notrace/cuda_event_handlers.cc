@@ -1,4 +1,5 @@
 #include "cuda_event_handlers.h"
+#include "handlers/default_handler.h"
 #include "handlers/kernel_launch.h"
 #include "nvbit.h"
 
@@ -22,7 +23,9 @@ notrace::cuda_event_handler_t* notrace::get_cuda_event_handler(
   if (it != cuda_event_handlers.end()) {
     return it->second;
   } else {
-    return nullptr;
+    notrace::default_handler::setCBID(
+        cbid);  // set the cbid for default handler
+    return notrace::default_handler::defaultHandlerHookWrapper;
   }
 }
 

@@ -13,7 +13,13 @@ class TraceConsumer {
   TraceConsumer(const TraceConsumer&) = delete;
   TraceConsumer& operator=(const TraceConsumer&) = delete;
 
-  virtual void process(void* data, size_t size) = 0;
+  virtual void process(void* data, size_t size) final {
+    auto& flaggers = ThreadLocalApiCallFlaggers::getInstance();
+    flaggers.setApiCallInProgress();
+    processImpl(data, size);
+    flaggers.resetApiCallInProgress();
+  }
+  virtual void processImpl(void* data, size_t size) = 0;
 };
 
 class TraceProducer {
