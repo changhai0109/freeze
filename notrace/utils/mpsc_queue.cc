@@ -13,7 +13,16 @@ MPSCMessageQueue::~MPSCMessageQueue() {
   }
   buffers_.clear();
 
-  delete this->defaultConsumer_;
+  if constexpr (notrace::default_handler::ENABLE_DEFAULT_HANDLER)
+    delete this->defaultConsumer_;
+}
+
+MPSCMessageQueue::MPSCMessageQueue() {
+  if constexpr (notrace::default_handler::ENABLE_DEFAULT_HANDLER) {
+    defaultConsumer_ = new notrace::default_handler::DefaultHandlerConsumer();
+  } else {
+    defaultConsumer_ = nullptr;
+  }
 }
 
 ThreadLocalRingBuffer* MPSCMessageQueue::getThreadLocalBuffer() {
@@ -72,12 +81,15 @@ size_t MPSCMessageQueue::processUpdates() {
         // printf("Processing message of type %d, size %u\n, consumer %p",
         //  header->api_type, header->size, (void*)consumer);
 
-        fflush(stdout);
+        // fflush(stdout);
         if (consumer == nullptr) {
-          consumer = this->defaultConsumer_;
+          if constexpr (notrace::default_handler::ENABLE_DEFAULT_HANDLER)
+            consumer = this->defaultConsumer_;
         }
-        void* payload = reinterpret_cast<void*>(header + 1);
-        consumer->process(payload, header->size);
+        if (consumer != nullptr) {
+          void* payload = reinterpret_cast<void*>(header + 1);
+          consumer->process(payload, header->size);
+        }
       }
 
       buf->advance(message_size);

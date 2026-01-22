@@ -237,7 +237,7 @@ void KernelLaunchConsumer::processEnd(KernelLaunchEndInfo* endInfo) {
 
 void KernelLaunchConsumer::processRecord(KernelLaunchRecord* msg) {
   printf(
-      "KernelLaunchRecord: Name=%s, Duration=%.3f ns\n, grid=(%u,%u,%u), "
+      "KernelLaunchRecord: Name=%s, Duration=%.3f ns, grid=(%u,%u,%u), "
       "block=(%u,%u,%u)\n",
       stringStore.getStringFromId(msg->kernelNameId).c_str(),
       static_cast<float>(msg->gpuEndCycles), msg->gridX, msg->gridY, msg->gridZ,

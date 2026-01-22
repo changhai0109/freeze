@@ -1,6 +1,7 @@
 #ifndef __NOTRACE_UTILS_MPSC_QUEUE_H__
 #define __NOTRACE_UTILS_MPSC_QUEUE_H__
 
+#include <condition_variable>
 #include <mutex>
 #include <vector>
 #include "common.h"
@@ -32,13 +33,12 @@ class MPSCMessageQueue {
   size_t processUpdates();
 
  private:
-  MPSCMessageQueue() = default;
+  MPSCMessageQueue();
   ~MPSCMessageQueue();
   MPSCMessageQueue(const MPSCMessageQueue&) = delete;
   MPSCMessageQueue& operator=(const MPSCMessageQueue&) = delete;
 
-  MessageConsumer defaultConsumer_ =
-      new default_handler::DefaultHandlerConsumer();
+  MessageConsumer defaultConsumer_;
 
   std::vector<ThreadLocalRingBuffer*> buffers_;
   std::mutex registryMutex_;
