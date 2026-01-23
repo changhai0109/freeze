@@ -1,5 +1,6 @@
 #include "handlers/mem_alloc.h"
 #include <cassert>
+#include "tracker/memory_tracker.h"
 #include "utils/mpsc_queue.h"
 
 namespace notrace {
@@ -7,6 +8,8 @@ namespace mem_alloc {
 
 static thread_local MessageWritter messageWritter;
 static MemAllocProducer globalMemAllocProducer;
+static memory_tracker::MemoryTracker& memoryTracker =
+    memory_tracker::MemoryTracker::getInstance();
 
 void MemAllocProducer::onStartHook(CUcontext ctx, const char* name,
                                    void* params, CUresult* pStatus) {
@@ -40,6 +43,7 @@ void MemAllocConsumer::processImpl(void* data, size_t size) {
   assert(size == sizeof(MemAllocRecord) && "Invalid size for MemAllocRecord");
   auto* msg = reinterpret_cast<MemAllocRecord*>(data);
   printf("MemAllocv2Record: ptr=%p, size=%zu\n", (void*)(msg->ptr), msg->size);
+  memoryTracker.recordAllocation((void*)(msg->ptr), msg->size);
 }
 
 void memAllocHookWrapper(CUcontext ctx, int is_exit, const char* name,
