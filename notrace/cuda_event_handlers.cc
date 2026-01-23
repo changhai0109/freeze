@@ -2,6 +2,7 @@
 #include "handlers/default_handler.h"
 #include "handlers/launch_kernel.h"
 #include "handlers/mem_alloc.h"
+#include "handlers/mem_free.h"
 #include "nvbit.h"
 
 using cuda_event_handler_t = notrace::cuda_event_handler_t;
@@ -45,4 +46,8 @@ void notrace::register_handlers() {
                               notrace::mem_alloc::memAllocHookWrapper);
   register_cuda_event_handler(API_CUDA_cuMemAlloc,
                               notrace::mem_alloc::memAllocHookWrapper);
+  register_cuda_event_handler(API_CUDA_cuMemFree_v2,
+                              notrace::mem_free::memFreeHookWrapper);
+  register_cuda_event_handler(API_CUDA_cuMemFree,
+                              notrace::mem_free::memFreeHookWrapper);
 }
