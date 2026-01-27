@@ -1,6 +1,7 @@
 #include "cuda_event_handlers.h"
 #include "handlers/default_handler.h"
 #include "handlers/launch_kernel.h"
+#include "handlers/library_load_data.h"
 #include "handlers/mem_alloc.h"
 #include "handlers/mem_free.h"
 #include "nvbit.h"
@@ -50,4 +51,7 @@ void notrace::register_handlers() {
                               notrace::mem_free::memFreeHookWrapper);
   register_cuda_event_handler(API_CUDA_cuMemFree,
                               notrace::mem_free::memFreeHookWrapper);
+  register_cuda_event_handler(
+      API_CUDA_cuLibraryLoadData,
+      notrace::library_load_data::libraryLoadDataHookWrapper);
 }

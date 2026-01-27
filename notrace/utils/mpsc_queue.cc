@@ -5,6 +5,7 @@
 #include "common.h"
 #include "handlers/default_handler.h"
 #include "handlers/launch_kernel.h"
+#include "handlers/library_load_data.h"
 #include "handlers/mem_alloc.h"
 #include "handlers/mem_free.h"
 #include "nvbit.h"
@@ -150,6 +151,7 @@ void MPSCMessageQueue::registerConsumers() {
   static kernel_launch::LaunchKernelConsumer kernelLaunchConsumer;
   static mem_alloc::MemAllocConsumer memAllocConsumer;
   static mem_free::MemFreeConsumer memFreeConsumer;
+  static library_load_data::LibraryLoadDataConsumer libraryLoadDataConsumer;
   this->registerConsumer(nvbit_api_cuda_t::API_CUDA_cuLaunchKernel,
                          &kernelLaunchConsumer);
   this->registerConsumer(nvbit_api_cuda_t::API_CUDA_cuMemAlloc_v2,
@@ -160,6 +162,8 @@ void MPSCMessageQueue::registerConsumers() {
                          &memFreeConsumer);
   this->registerConsumer(nvbit_api_cuda_t::API_CUDA_cuMemFree,
                          &memFreeConsumer);
+  this->registerConsumer(nvbit_api_cuda_t::API_CUDA_cuLibraryLoadData,
+                         &libraryLoadDataConsumer);
 }
 
 }  // namespace notrace
