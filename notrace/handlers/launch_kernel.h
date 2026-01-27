@@ -2,11 +2,12 @@
 #define __NOTRACE_HANDLERS_KERNEL_LAUNCH_H__
 
 #include <cuda.h>
-#include <cuda_runtime.h>
+// #include <cuda_runtime.h>
 #include <cstdint>
 #include <unordered_map>
 #include <vector>
 
+#include <cuda_runtime.h>
 #include "common.h"
 #include "handlers/base_handler.h"  // Include the new base definitions
 #include "nvbit.h"

@@ -1,4 +1,5 @@
 #include "handlers/default_handler.h"
+#include "common.h"
 #include "nvbit.h"
 #include "utils/mpsc_queue.h"
 #include "utils/string_store.h"
@@ -13,11 +14,17 @@ StringStore& stringStore = StringStore::getInstance();
 
 void DefaultHandlerProducer::onStartHook(CUcontext ctx, const char* name,
                                          void* params, CUresult* pStatus) {
-  // printf("DefaultHandlerProducer::onStartHook called for %s\n", name);
+  if constexpr (notrace::debug::ENABLE_DEBUG_LOGS) {
+    printf("DefaultHandlerProducer::onStartHook called for %s\n", name);
+    printf("[MPSC] RingBuffer id=%lu, thread=%lu\n",
+           messageWritter.getBufferId(),
+           std::hash<std::thread::id>{}(std::this_thread::get_id()));
+  }
   // Reserve space in the queue
   auto* msg = messageWritter.reserve<DefaultHandlerParams>(cbid);
 
-  if (msg == nullptr) {
+  if (msg == nullptr) [[unlikely]] {
+    assert(false && "Failed to reserve message in DefaultHandlerProducer");
     return;
   }
 
@@ -29,11 +36,13 @@ void DefaultHandlerProducer::onStartHook(CUcontext ctx, const char* name,
 
 void DefaultHandlerProducer::onEndHook(CUcontext ctx, const char* name,
                                        void* params, CUresult* pStatus) {
-  // printf("DefaultHandlerProducer::onEndHook called for %s\n", name);
+  if constexpr (notrace::debug::ENABLE_DEBUG_LOGS)
+    printf("DefaultHandlerProducer::onEndHook called for %s\n", name);
   // Reserve space in the queue
   auto* msg = messageWritter.reserve<DefaultHandlerParams>(cbid);
 
-  if (msg == nullptr) {
+  if (msg == nullptr) [[unlikely]] {
+    assert(false && "Failed to reserve message in DefaultHandlerProducer");
     return;
   }
 
@@ -50,6 +59,9 @@ void DefaultHandlerConsumer::processImpl(void* data, size_t size) {
   DefaultHandlerParams* msg = reinterpret_cast<DefaultHandlerParams*>(data);
   const char* apiName = "unknown_api";
   apiName = stringStore.getStringFromId(msg->apiNameId).c_str();
+
+  if constexpr (notrace::debug::ENABLE_DEBUG_LOGS)
+    printf("DefaultHandlerConsumer::processImpl called for %s\n", apiName);
 
   switch (msg->messageType) {
     case MESSAGE_TYPE_START:

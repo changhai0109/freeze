@@ -55,6 +55,7 @@ void LaunchKernelProducer::onStartHook(CUcontext ctx, const char* name,
       nvbit_api_cuda_t::API_CUDA_cuLaunchKernel);
 
   if (msg == nullptr) [[unlikely]] {
+    assert(false && "Failed to reserve message in LaunchKernelProducer");
     return;
   }
 
@@ -95,6 +96,7 @@ void LaunchKernelProducer::onEndHook(CUcontext ctx, const char* name,
       nvbit_api_cuda_t::API_CUDA_cuLaunchKernel);
 
   if (msg == nullptr) [[unlikely]] {
+    assert(false && "Failed to reserve message in LaunchKernelProducer");
     return;
   }
 

@@ -7,7 +7,7 @@
 namespace notrace {
 namespace default_handler {
 
-constexpr bool ENABLE_DEFAULT_HANDLER = false;
+constexpr bool ENABLE_DEFAULT_HANDLER = true;
 
 const uint8_t MESSAGE_TYPE_START = 1;
 const uint8_t MESSAGE_TYPE_END = 2;
