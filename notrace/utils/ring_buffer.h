@@ -57,6 +57,10 @@ class ThreadLocalRingBuffer {
   BufferSpan peek();
 
   void advance(size_t bytes_processed);
+
+  uint64_t id() const { return id_; }
+
+  uint64_t id_;
 };
 
 }  // namespace notrace

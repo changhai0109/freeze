@@ -8,6 +8,9 @@ ThreadLocalRingBuffer::ThreadLocalRingBuffer() {
   this->consumerPos.store(0, std::memory_order_relaxed);
   this->reservedPos = 0;
   this->pendingCommit = false;
+
+  static std::atomic<uint64_t> next_id{0};
+  id_ = next_id.fetch_add(1, std::memory_order_relaxed);
 }
 
 ThreadLocalRingBuffer::~ThreadLocalRingBuffer() {

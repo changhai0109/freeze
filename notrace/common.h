@@ -15,4 +15,10 @@ typedef CUDA_ARRAY3D_DESCRIPTOR CUDA_ARRAY3D_DESCRIPTOR_v1;
 
 #include "nvbit.h"
 
+namespace notrace {
+namespace debug {
+inline constexpr bool ENABLE_DEBUG_LOGS = false;
+}  // namespace debug
+}  // namespace notrace
+
 #endif
