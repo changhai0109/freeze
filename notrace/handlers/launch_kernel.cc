@@ -63,6 +63,23 @@ void LaunchKernelProducer::onStartHook(CUcontext ctx, const char* name,
 
   const char* kernelName = "unknown_kernel";
   cuFuncGetName(&kernelName, p->f);
+  size_t paramOffset, paramSize;
+  for (uint8_t i = 0; i < 16; i++) {
+    CUresult ret = cuFuncGetParamInfo(p->f, i, &paramOffset, &paramSize);
+    if (ret != CUDA_SUCCESS) {
+      break;
+    }
+    printf("  Param %u: offset=%zu, size=%zu\n", i, paramOffset, paramSize);
+    if (paramSize == 8) {
+      printf("    Value: %lu\n",
+             *(reinterpret_cast<uint64_t*>(p->kernelParams[i])));
+    } else if (paramSize == 4) {
+      printf("    Value: %u\n",
+             *(reinterpret_cast<uint32_t*>(p->kernelParams[i])));
+    } else {
+      printf("    Value: (size %zu not supported for printing)\n", paramSize);
+    }
+  }
 
   msg->messageType = MESSAGE_TYPE_KERNEL_START;
   msg->kernelNameId = stringStore.getStringId(std::string(kernelName));
