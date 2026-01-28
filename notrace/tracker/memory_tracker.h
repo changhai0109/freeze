@@ -8,6 +8,8 @@
 namespace notrace {
 namespace memory_tracker {
 
+enum class Location { UNKNOWN = 0, DEVICE, HOST };
+
 class MemoryTracker {
  public:
   static MemoryTracker& getInstance() {
@@ -17,18 +19,20 @@ class MemoryTracker {
 
   bool exists(void* ptr);
 
-  void recordAllocation(void* ptr, size_t size);
+  void recordAllocation(void* ptr, size_t size, Location location);
 
   void recordDeallocation(void* ptr);
 
-  size_t getAllocationSize(void* ptr);
+  size_t getAllocationSize(void* ptr) const;
+
+  Location getAllocationLocation(void* ptr) const;
 
  private:
   MemoryTracker() = default;
   ~MemoryTracker();
   MemoryTracker(const MemoryTracker&) = delete;
   MemoryTracker& operator=(const MemoryTracker&) = delete;
-  std::unordered_map<void*, size_t> pointerMap;
+  std::unordered_map<void*, std::pair<size_t, Location>> pointerMap;
 };
 
 }  // namespace memory_tracker
