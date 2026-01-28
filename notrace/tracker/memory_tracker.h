@@ -32,7 +32,8 @@ class MemoryTracker {
   ~MemoryTracker();
   MemoryTracker(const MemoryTracker&) = delete;
   MemoryTracker& operator=(const MemoryTracker&) = delete;
-  std::unordered_map<void*, std::pair<size_t, Location>> pointerMap;
+  std::unordered_map<void*, std::pair<size_t, Location>> activePointerMap;
+  std::unordered_map<void*, std::pair<size_t, Location>> freedPointerMap;
 };
 
 }  // namespace memory_tracker
