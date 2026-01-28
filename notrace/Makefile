@@ -1,3 +1,14 @@
+PROFILE ?= debug
+ifeq ($(PROFILE),debug)
+  CXXFLAGS = -g -O0 -DDEBUG
+  NVCCFLAGS = -g -O0 -DDEBUG
+else ifeq ($(PROFILE),release)
+  CXXFLAGS = -O3
+  NVCCFLAGS = -O3
+else
+  $(error ERROR: Unknown PROFILE '$(PROFILE)'. Supported: debug, release)
+endif
+
 CUDA_HOME = $(shell dirname $(shell which nvcc))/..
 
 NVCC = nvcc -ccbin=$(CXX) -D_FORCE_INLINES
@@ -19,13 +30,18 @@ NVCC_PATH = -L $(subst bin/nvcc,lib64,$(shell which nvcc | tr -s /))
 
 ARCH ?= all
 
+# ---- Object Directory ----
+# Object files will be placed in a profile-specific build directory
+OBJ_DIR := build_$(PROFILE)
+
 # ---- sources ----
 SRC_DIRS := . handlers utils tracker
 CC_SRC := $(foreach d,$(SRC_DIRS),$(wildcard $(d)/*.cc))
 CU_SRC := $(foreach d,$(SRC_DIRS),$(wildcard $(d)/*.cu))
 
-CU_OBJ  = $(CU_SRC:.cu=.o)
-CC_OBJ  = $(CC_SRC:.cc=.o)
+# Object files will be placed in OBJ_DIR, maintaining their original subdirectory structure
+CU_OBJ  = $(patsubst %.cu,$(OBJ_DIR)/%.o,$(CU_SRC))
+CC_OBJ  = $(patsubst %.cc,$(OBJ_DIR)/%.o,$(CC_SRC))
 
 OBJECTS = $(CU_OBJ) $(CC_OBJ)
 
@@ -35,22 +51,31 @@ NVBIT_TOOL  := $(current_dir).so
 
 # ---- targets ----
 all: $(NVBIT_TOOL)
+.PHONY: all clean
+
+# Rule to create all necessary object directories
+$(OBJ_DIR):
+	@mkdir -p $(sort $(dir $(OBJECTS)))
 
 $(NVBIT_TOOL): $(OBJECTS) $(NVBIT_PATH)/libnvbit.a
-	$(NVCC) -arch=$(ARCH) -O0 -g $(OBJECTS) \
+	$(NVCC) ${NVCCFLAGS} $(OBJECTS) \
 	    $(LIBS) $(NVCC_PATH) -lcuda -lcudart_static \
 	    -shared -o $@
 
 # ---- compilation rules ----
-%.o: %.cu
+# CUDA C++ compilation rule
+$(OBJ_DIR)/%.o: %.cu | $(OBJ_DIR)
 	$(NVCC) -dc -c -std=c++17 $(INCLUDES) \
 	    -Xptxas -cloning=no \
 	    -Xcompiler -Wall -Xcompiler -fPIC \
-	    -arch=$(ARCH) -O0 -g $< -o $@
+	    -arch=$(ARCH) ${NVCCFLAGS} $< -o $@
 
-%.o: %.cc
-	$(CXX) -std=c++17 -Wall -fPIC $(INCLUDES) -O0 -g \
+# Host C++ compilation rule
+$(OBJ_DIR)/%.o: %.cc | $(OBJ_DIR)
+	$(CXX) -std=c++17 -Wall -fPIC $(INCLUDES) ${CXXFLAGS} \
 	    -c $< -o $@
 
 clean:
-	rm -f *.so *.o */*.o
+	@echo "Cleaning up build artifacts..."
+	rm -rf *.so $(OBJ_DIR)
+	@echo "Clean complete."
