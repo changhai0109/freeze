@@ -4,6 +4,7 @@
 #include <thread>
 
 #include "cuda_event_handlers.h"
+#include "event.h"
 #include "nvbit.h"
 #include "nvbit_tool.h"
 #include "utils/mpsc_queue.h"  // Ensure this includes your Queue definition
@@ -38,7 +39,8 @@ void nvbit_at_init() {
 void nvbit_at_cuda_event(CUcontext ctx, int is_exit, nvbit_api_cuda_t cbid,
                          const char* name, void* params, CUresult* pStatus) {
 
-  printf("nvbit_at_cuda_event: %s %s\n", is_exit ? "EXIT" : "ENTER", name);
+  if constexpr (notrace::debug::ENABLE_DEBUG_LOGS)
+    printf("nvbit_at_cuda_event: %s %s\n", is_exit ? "EXIT" : "ENTER", name);
   notrace::cuda_event_handler_t* handler =
       notrace::get_cuda_event_handler(cbid);
 

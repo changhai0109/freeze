@@ -1,0 +1,29 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "GDB: python torch_test.py with LD_PRELOAD",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/home/changhai/miniconda3/envs/hf_cuda/bin/python", // 或者 "python"，写绝对路径更稳
+            "args": [
+                "torch_test.py"
+            ], // 脚本名字
+            "cwd": "${workspaceFolder}/notrace", // 当前工作目录
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb", // gdb 路径
+            "environment": [
+                {
+                    "name": "NO_EAGER_LOAD",
+                    "value": "1"
+                },
+                {
+                    "name": "LD_PRELOAD",
+                    "value": "${workspaceFolder}/notrace/notrace.so"
+                }
+            ],
+            "externalConsole": false, // 如需在单独终端里跑可设为 true
+            "stopAtEntry": true // 想一启动就停可改 true
+        }
+    ]
+}
