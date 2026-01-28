@@ -3,14 +3,17 @@
 #include <atomic>
 #include <cassert>
 #include <chrono>
+#include <cstddef>
 #include <cstdio>
 #include <cstring>
+#include <map>
 #include <memory>
 #include <thread>
 
 #include "cuda.h"
 #include "generated_cuda_meta.h"
 #include "nvbit.h"
+#include "tracker/memory_tracker.h"
 #include "utils/cuda_safecall.h"
 #include "utils/event_pool.h"
 #include "utils/mpsc_queue.h"
@@ -22,6 +25,8 @@ namespace kernel_launch {
 // Global singletons/statics
 std::atomic<uint64_t> launchIdCounter{0};
 thread_local uint64_t currentLaunchId = 0;
+thread_local std::unordered_map<CUfunction, CachedKernelParamData>
+    kernelParamMetadataCache;
 
 CudaEventPool& cudaEventPool = CudaEventPool::getInstance();
 StringStore& stringStore = StringStore::getInstance();
@@ -30,6 +35,9 @@ StringStore& stringStore = StringStore::getInstance();
 static thread_local MessageWritter messageWritter;
 
 static LaunchKernelProducer globalKernelProducer;
+
+static memory_tracker::MemoryTracker& memoryTracker =
+    memory_tracker::MemoryTracker::getInstance();
 
 // Helpers for ID generation
 inline uint64_t getAndSaveLaunchId() {
@@ -63,23 +71,6 @@ void LaunchKernelProducer::onStartHook(CUcontext ctx, const char* name,
 
   const char* kernelName = "unknown_kernel";
   cuFuncGetName(&kernelName, p->f);
-  size_t paramOffset, paramSize;
-  for (uint8_t i = 0; i < 16; i++) {
-    CUresult ret = cuFuncGetParamInfo(p->f, i, &paramOffset, &paramSize);
-    if (ret != CUDA_SUCCESS) {
-      break;
-    }
-    printf("  Param %u: offset=%zu, size=%zu\n", i, paramOffset, paramSize);
-    if (paramSize == 8) {
-      printf("    Value: %lu\n",
-             *(reinterpret_cast<uint64_t*>(p->kernelParams[i])));
-    } else if (paramSize == 4) {
-      printf("    Value: %u\n",
-             *(reinterpret_cast<uint32_t*>(p->kernelParams[i])));
-    } else {
-      printf("    Value: (size %zu not supported for printing)\n", paramSize);
-    }
-  }
 
   msg->messageType = MESSAGE_TYPE_KERNEL_START;
   msg->kernelNameId = stringStore.getStringId(std::string(kernelName));
@@ -96,6 +87,55 @@ void LaunchKernelProducer::onStartHook(CUcontext ctx, const char* name,
   msg->blockY = p->blockDimY;
   msg->blockZ = p->blockDimZ;
   msg->sharedMemBytes = p->sharedMemBytes;
+
+  CachedKernelParamData const* cachedParams;
+  auto it = kernelParamMetadataCache.find(p->f);
+  if (it != kernelParamMetadataCache.end()) {
+    cachedParams = &it->second;
+  } else {
+    // Query parameter metadata from CUDA
+    CachedKernelParamData newCahceData;
+    newCahceData.numParams = 0;
+
+    for (uint8_t i = 0; i < MAX_KERNEL_ARGS; i++) {
+      size_t offset = 0;
+      size_t size = 0;
+      CUresult res = cuFuncGetParamInfo(p->f, i, &offset, &size);
+      if (res != CUDA_SUCCESS) {
+        break;
+      }
+      newCahceData.params[i].bufferOffset = offset;
+      newCahceData.params[i].size = size;
+      newCahceData.numParams++;
+    }
+    cachedParams =
+        &kernelParamMetadataCache.emplace(p->f, newCahceData).first->second;
+  }
+  msg->numArgs = 0;
+  msg->currentArgDataOffset = 0;
+  if (p->kernelParams != nullptr && cachedParams->numParams > 0) {
+    for (uint8_t i = 0; i < cachedParams->numParams; i++) {
+      size_t paramSize = cachedParams->params[i].size;
+
+      if (msg->currentArgDataOffset + paramSize > MAX_TOTAL_ARG_DATA_BYTES)
+          [[unlikely]] {
+        // Exceeded max buffer size
+        assert(false && "Exceeded max total arg data bytes");
+        break;
+      }
+
+      // Copy parameter data from the kernelParams array
+      void* sourceParamPtr = reinterpret_cast<uint8_t**>(p->kernelParams)[i];
+      void* destParamPtr = &(msg->argDataBuffer[msg->currentArgDataOffset]);
+      memcpy(destParamPtr, sourceParamPtr, paramSize);
+
+      // Fill in the KernelArgInfo
+      msg->argInfos[msg->numArgs].bufferOffset = msg->currentArgDataOffset;
+      msg->argInfos[msg->numArgs].size = static_cast<uint16_t>(paramSize);
+      msg->numArgs++;
+      msg->currentArgDataOffset += static_cast<uint16_t>(paramSize);
+    }
+  }
 
   // Record start event
   CUDA_SAFECALL(
@@ -221,6 +261,9 @@ void LaunchKernelConsumer::processEnd(LaunchKernelEndInfo* endInfo) {
   CUDA_SAFECALL(cudaEventElapsedTime(&durationMs, startInfo->startEvent,
                                      endInfo->endEvent));
 
+  // 1.5 Optional: Analyze Kernel Arguments
+  analyzeKernelArgs(startInfo);
+
   // 2. Generate the "Processed" Record
   // The Consumer acts as a Producer here! It writes back to the queue.
   // Note: We use the same traceWriter mechanism.
@@ -267,6 +310,50 @@ void launchKernelHookWrapper(CUcontext ctx, int is_exit, const char* name,
                              void* params, CUresult* pStatus) {
   // Forward the C-style call to the C++ Class instance
   globalKernelProducer.apiHook(ctx, is_exit, name, params, pStatus);
+}
+
+void LaunchKernelConsumer::analyzeKernelArgs(LaunchKernelStartInfo* msg) {
+  if (msg->numArgs == 0) {
+    printf("No kernel arguments captured.\n");
+    return;
+  }
+
+  printf("Kernel Arguments (total %u):\n", msg->numArgs);
+  for (uint8_t i = 0; i < msg->numArgs; i++) {
+    KernelArgInfo& argInfo = msg->argInfos[i];
+    size_t size = argInfo.size;
+    if (size == 8) {
+      // maybe a pointer
+      if (memoryTracker.exists(
+              *(void**)(msg->argDataBuffer + argInfo.bufferOffset))) {
+        void* ptr = *(void**)(msg->argDataBuffer + argInfo.bufferOffset);
+        size_t allocSize = memoryTracker.getAllocationSize(ptr);
+        printf("  Arg %u: ptr=%p (allocated size=%zu bytes)\n", i, ptr,
+               allocSize);
+      } else {
+        uint64_t val = *(uint64_t*)(msg->argDataBuffer + argInfo.bufferOffset);
+        printf("  Arg %u: uint64_t=%lu\n", i, val);
+      }
+    } else if (size == 4) {
+      uint32_t val = *(uint32_t*)(msg->argDataBuffer + argInfo.bufferOffset);
+      printf("  Arg %u: uint32_t=%u\n", i, val);
+    } else if (size == 2) {
+      uint16_t val = *(uint16_t*)(msg->argDataBuffer + argInfo.bufferOffset);
+      printf("  Arg %u: uint16_t=%u\n", i, val);
+    } else if (size == 1) {
+      uint8_t val = *(uint8_t*)(msg->argDataBuffer + argInfo.bufferOffset);
+      printf("  Arg %u: uint8_t=%u\n", i, val);
+    } else {
+      printf("  Arg %u: [unhandled size=%zu bytes]=", i, size);
+      for (size_t b = 0; b < size; b++) {
+        // Just dump raw bytes
+        uint8_t byteVal =
+            *(uint8_t*)(msg->argDataBuffer + argInfo.bufferOffset + b);
+        printf("%02x ", byteVal);
+      }
+      printf("\n");
+    }
+  }
 }
 
 }  // namespace kernel_launch

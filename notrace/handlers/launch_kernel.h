@@ -21,6 +21,16 @@ const uint8_t MESSAGE_TYPE_KERNEL_START = 1;
 const uint8_t MESSAGE_TYPE_KERNEL_END = 2;
 const uint8_t MESSAGE_TYPE_KERNEL_PROCESSED = 4;
 
+constexpr size_t MAX_KERNEL_ARGS = 32;
+constexpr size_t MAX_TOTAL_ARG_DATA_BYTES = MAX_KERNEL_ARGS * 8;
+
+#pragma pack(push, 1)
+typedef struct {
+  uint16_t bufferOffset;
+  uint16_t size;
+} KernelArgInfo;
+#pragma pack(pop)
+
 #pragma pack(push, 1)
 typedef struct {
   uint8_t messageType;
@@ -34,6 +44,12 @@ typedef struct {
   uint32_t gridX, gridY, gridZ;
   uint32_t blockX, blockY, blockZ;
   uint32_t sharedMemBytes;
+
+  uint8_t numArgs;
+  KernelArgInfo argInfos[MAX_KERNEL_ARGS];
+  uint8_t argDataBuffer[MAX_TOTAL_ARG_DATA_BYTES];
+  uint16_t currentArgDataOffset;
+
 } LaunchKernelStartInfo;
 #pragma pack(pop)
 
@@ -60,6 +76,13 @@ typedef struct {
   uint32_t blockX, blockY, blockZ;
   uint32_t sharedMemBytes;
 } LaunchKernelRecord;
+#pragma pack(pop)
+
+#pragma pack(push, 1)
+struct CachedKernelParamData {
+  uint8_t numParams;
+  KernelArgInfo params[MAX_KERNEL_ARGS];
+};
 #pragma pack(pop)
 
 /**
@@ -91,6 +114,8 @@ class LaunchKernelConsumer : public TraceConsumer {
   void processStart(LaunchKernelStartInfo* msg);
   void processEnd(LaunchKernelEndInfo* msg);
   void processRecord(LaunchKernelRecord* msg);
+
+  void analyzeKernelArgs(LaunchKernelStartInfo* startInfo);
 
   // Correlation map to match Start events with End events.
   // Owned by the consumer instance (single-threaded access assumed in processUpdates)
