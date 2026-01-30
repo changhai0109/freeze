@@ -3,11 +3,13 @@
 #include <iostream>
 #include <thread>
 #include "common.h"
+#include "handlers/ctx_get_current.h"
 #include "handlers/default_handler.h"
 #include "handlers/launch_kernel.h"
 #include "handlers/library_load_data.h"
 #include "handlers/mem_alloc.h"
 #include "handlers/mem_free.h"
+#include "handlers/stream_create.h"
 #include "nvbit.h"
 
 namespace notrace {
@@ -39,7 +41,7 @@ ThreadLocalRingBuffer* MPSCMessageQueue::getThreadLocalBuffer() {
   {
     std::lock_guard<std::mutex> lock(registryMutex_);
     buffers_.push_back(newBuffer);
-    if constexpr (notrace::debug::ENABLE_DEBUG_LOGS)
+    if constexpr (notrace::debug::ENABLE_MPSC_DEBUG_LOGS)
       printf("[MPSC] new ThreadLocalRingBuffer id=%lu created, in thread %lu\n",
              newBuffer->id(),
              std::hash<std::thread::id>{}(std::this_thread::get_id()));
@@ -68,7 +70,7 @@ size_t MPSCMessageQueue::processUpdates() {
     std::lock_guard<std::mutex> lock(this->registryMutex_);
     buffers_snapshot = this->buffers_;
 
-    if constexpr (notrace::debug::ENABLE_DEBUG_LOGS) {
+    if constexpr (notrace::debug::ENABLE_MPSC_DEBUG_LOGS) {
       printf("[MPSC] Processing %zu buffers, threadId=%lu\n",
              buffers_snapshot.size(),
              std::hash<std::thread::id>{}(std::this_thread::get_id()));
@@ -85,7 +87,7 @@ size_t MPSCMessageQueue::processUpdates() {
       BufferSpan span = buf->peek();
 
       if (span.data == nullptr || span.size == 0) {
-        if constexpr (notrace::debug::ENABLE_DEBUG_LOGS)
+        if constexpr (notrace::debug::ENABLE_MPSC_DEBUG_LOGS)
           printf("[MPSC] No more data to process in buffer id=%lu\n",
                  buf->id());
         break;
@@ -106,7 +108,7 @@ size_t MPSCMessageQueue::processUpdates() {
                "Not enough data for complete message");
         break;
       }
-      if constexpr (notrace::debug::ENABLE_DEBUG_LOGS) {
+      if constexpr (notrace::debug::ENABLE_MPSC_DEBUG_LOGS) {
         auto* h = reinterpret_cast<MPSCMessageHeaderWithId*>(header);
         printf(
             "[MPSC] Processing message of type %d, size %u, message id=%lu "
@@ -152,6 +154,9 @@ void MPSCMessageQueue::registerConsumers() {
   static mem_alloc::MemAllocConsumer memAllocConsumer;
   static mem_free::MemFreeConsumer memFreeConsumer;
   static library_load_data::LibraryLoadDataConsumer libraryLoadDataConsumer;
+  static stream_create::StreamCreateConsumer streamCreateConsumer;
+  static ctx_get_current::CtxGetCurrentConsumer ctxGetCurrentConsumer;
+
   this->registerConsumer(nvbit_api_cuda_t::API_CUDA_cuLaunchKernel,
                          &kernelLaunchConsumer);
   this->registerConsumer(nvbit_api_cuda_t::API_CUDA_cuMemAlloc_v2,
@@ -164,6 +169,12 @@ void MPSCMessageQueue::registerConsumers() {
                          &memFreeConsumer);
   this->registerConsumer(nvbit_api_cuda_t::API_CUDA_cuLibraryLoadData,
                          &libraryLoadDataConsumer);
+  this->registerConsumer(nvbit_api_cuda_t::API_CUDA_cuStreamCreate,
+                         &streamCreateConsumer);
+  this->registerConsumer(nvbit_api_cuda_t::API_CUDA_cuStreamCreateWithPriority,
+                         &streamCreateConsumer);
+  this->registerConsumer(nvbit_api_cuda_t::API_CUDA_cuCtxGetCurrent,
+                         &ctxGetCurrentConsumer);
 }
 
 }  // namespace notrace

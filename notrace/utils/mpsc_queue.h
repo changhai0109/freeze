@@ -65,7 +65,7 @@ class MessageWritter {
   T* reserve(nvbit_api_cuda_t type) {
     if (buffer_ == nullptr) [[unlikely]] {
       initialize();
-      if constexpr (notrace::debug::ENABLE_DEBUG_LOGS)
+      if constexpr (notrace::debug::ENABLE_MPSC_DEBUG_LOGS)
         printf(
             "[MPSC] Initialized ThreadLocalRingBuffer id=%lu for thread %lu\n",
             buffer_->id(), std::this_thread::get_id());
@@ -75,19 +75,19 @@ class MessageWritter {
 
     void* reserved = buffer_->reserve(totalSize);
     if (reserved == nullptr) {
-      if constexpr (notrace::debug::ENABLE_DEBUG_LOGS)
+      if constexpr (notrace::debug::ENABLE_MPSC_DEBUG_LOGS)
         printf("[MPSC] Failed to reserve %zu bytes in buffer id=%lu\n",
                totalSize, buffer_->id());
       return nullptr;
     }
     MPSCMessageHeader* header = reinterpret_cast<MPSCMessageHeader*>(reserved);
     header->api_type = type;
-    if constexpr (notrace::debug::ENABLE_DEBUG_LOGS) {
+    if constexpr (notrace::debug::ENABLE_MPSC_DEBUG_LOGS) {
       auto* h = reinterpret_cast<MPSCMessageHeaderWithId*>(header);
       h->id = global_mpsc_buffer_id.fetch_add(1, std::memory_order_relaxed);
     }
     header->size = sizeof(T);
-    if constexpr (notrace::debug::ENABLE_DEBUG_LOGS) {
+    if constexpr (notrace::debug::ENABLE_MPSC_DEBUG_LOGS) {
       auto* h = reinterpret_cast<MPSCMessageHeaderWithId*>(header);
       printf("[MPSC] Reserved %zu bytes in buffer id=%lu, message id=%lu\n",
              totalSize, buffer_->id(), h->id);
@@ -97,7 +97,7 @@ class MessageWritter {
 
   void commit() {
     if (buffer_ == nullptr) {
-      if constexpr (notrace::debug::ENABLE_DEBUG_LOGS)
+      if constexpr (notrace::debug::ENABLE_MPSC_DEBUG_LOGS)
         printf("[MPSC] Error: commit called before initialize\n");
       return;
     }
