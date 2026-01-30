@@ -1,4 +1,5 @@
 #include "handlers/mem_free.h"
+#include "common.h"
 #include "generated_cuda_meta.h"
 #include "tracker/memory_tracker.h"
 #include "utils/mpsc_queue.h"
@@ -12,7 +13,8 @@ void MemFreeProducer::onStartHook(CUcontext ctx, const char* name, void* params,
                                   CUresult* pStatus) {
   // do nothing
   cuMemFree_v2_params* p = (cuMemFree_v2_params*)params;
-  printf("MemFree called for ptr=%p\n", (void*)(p->dptr));
+  if constexpr (notrace::debug::ENABLE_DEBUG_LOGS)
+    printf("MemFree called for ptr=%p\n", (void*)(p->dptr));
 }
 
 void MemFreeProducer::onEndHook(CUcontext ctx, const char* name, void* params,
@@ -42,6 +44,7 @@ void MemFreeProducer::onEndHook(CUcontext ctx, const char* name, void* params,
 void MemFreeConsumer::processImpl(void* data, size_t size) {
   assert(size == sizeof(MemFreeRecord) && "Invalid size for MemFreeRecord");
   auto* msg = reinterpret_cast<MemFreeRecord*>(data);
+  // if constexpr (notrace::debug::ENABLE_DEBUG_LOGS)
   printf("MemFreev2Record: ptr=%p\n", (void*)(msg->ptr));
   memory_tracker::MemoryTracker::getInstance().recordDeallocation(
       (void*)(msg->ptr));

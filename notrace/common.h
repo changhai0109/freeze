@@ -18,6 +18,7 @@ typedef CUDA_ARRAY3D_DESCRIPTOR CUDA_ARRAY3D_DESCRIPTOR_v1;
 namespace notrace {
 namespace debug {
 inline constexpr bool ENABLE_DEBUG_LOGS = false;
+inline constexpr bool ENABLE_MPSC_DEBUG_LOGS = false && ENABLE_DEBUG_LOGS;
 }  // namespace debug
 }  // namespace notrace
 

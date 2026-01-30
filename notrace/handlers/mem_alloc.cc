@@ -42,7 +42,9 @@ void MemAllocProducer::onEndHook(CUcontext ctx, const char* name, void* params,
 void MemAllocConsumer::processImpl(void* data, size_t size) {
   assert(size == sizeof(MemAllocRecord) && "Invalid size for MemAllocRecord");
   auto* msg = reinterpret_cast<MemAllocRecord*>(data);
-  printf("MemAllocv2Record: ptr=%p, size=%zu\n", (void*)(msg->ptr), msg->size);
+  if constexpr (notrace::debug::ENABLE_DEBUG_LOGS)
+    printf("MemAllocv2Record: ptr=%p, size=%zu\n", (void*)(msg->ptr),
+           msg->size);
   memoryTracker.recordAllocation((void*)(msg->ptr), msg->size,
                                  memory_tracker::Location::DEVICE);
 }

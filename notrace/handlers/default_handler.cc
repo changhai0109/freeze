@@ -14,7 +14,7 @@ StringStore& stringStore = StringStore::getInstance();
 
 void DefaultHandlerProducer::onStartHook(CUcontext ctx, const char* name,
                                          void* params, CUresult* pStatus) {
-  if constexpr (notrace::debug::ENABLE_DEBUG_LOGS) {
+  if constexpr (notrace::debug::ENABLE_MPSC_DEBUG_LOGS) {
     printf("DefaultHandlerProducer::onStartHook called for %s\n", name);
     printf("[MPSC] RingBuffer id=%lu, thread=%lu\n",
            messageWritter.getBufferId(),
