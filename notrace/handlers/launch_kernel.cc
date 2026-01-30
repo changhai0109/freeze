@@ -17,6 +17,7 @@
 #include "utils/cuda_safecall.h"
 #include "utils/event_pool.h"
 #include "utils/mpsc_queue.h"
+#include "utils/stream_event_mapper.h"
 #include "utils/string_store.h"
 
 namespace notrace {
@@ -38,6 +39,8 @@ static LaunchKernelProducer globalKernelProducer;
 
 static memory_tracker::MemoryTracker& memoryTracker =
     memory_tracker::MemoryTracker::getInstance();
+
+static StreamEventMapper& streamEventMapper = StreamEventMapper::getInstance();
 
 // Helpers for ID generation
 inline uint64_t getAndSaveLaunchId() {
@@ -162,6 +165,7 @@ void LaunchKernelProducer::onEndHook(CUcontext ctx, const char* name,
   msg->messageType = MESSAGE_TYPE_KERNEL_END;
   msg->launchId = launchId;
   msg->endEvent = cudaEventPool.acquire();
+  msg->tid = std::this_thread::get_id();
 
   // Record end event
   CUDA_SAFECALL(
@@ -257,9 +261,11 @@ void LaunchKernelConsumer::processEnd(LaunchKernelEndInfo* endInfo) {
   // 1. Calculate GPU Duration
   // Note: cudaEventElapsedTime syncs the CPU thread until GPU records the event.
   // Use caution if you want strictly non-blocking consumers.
-  float durationMs = 0.0f;
-  CUDA_SAFECALL(cudaEventElapsedTime(&durationMs, startInfo->startEvent,
-                                     endInfo->endEvent));
+  uint64_t startNs, endNs;
+  startNs = streamEventMapper.getStreamTimestamp(
+      startInfo->stream, endInfo->tid, startInfo->startEvent);
+  endNs = streamEventMapper.getStreamTimestamp(startInfo->stream, endInfo->tid,
+                                               endInfo->endEvent);
 
   // 1.5 Optional: Analyze Kernel Arguments
   analyzeKernelArgs(startInfo);
@@ -274,8 +280,8 @@ void LaunchKernelConsumer::processEnd(LaunchKernelEndInfo* endInfo) {
     record->messageType = MESSAGE_TYPE_KERNEL_PROCESSED;
     record->kernelNameId = startInfo->kernelNameId;
     record->launchId = startInfo->launchId;
-    record->gpuStartCycles = 0;  // Or fetch clock()
-    record->gpuEndCycles = static_cast<uint64_t>(durationMs * 1e6);  // ns
+    record->gpuStartCycles = startNs;
+    record->gpuEndCycles = endNs;
 
     record->stream = startInfo->stream;
     record->context = startInfo->context;
@@ -299,11 +305,11 @@ void LaunchKernelConsumer::processEnd(LaunchKernelEndInfo* endInfo) {
 
 void LaunchKernelConsumer::processRecord(LaunchKernelRecord* msg) {
   printf(
-      "KernelLaunchRecord: Name=%s, Duration=%.3f ns, grid=(%u,%u,%u), "
+      "KernelLaunchRecord: Name=%s, startNs=%lu, endNs=%lu, grid=(%u,%u,%u), "
       "block=(%u,%u,%u)\n",
       stringStore.getStringFromId(msg->kernelNameId).c_str(),
-      static_cast<float>(msg->gpuEndCycles), msg->gridX, msg->gridY, msg->gridZ,
-      msg->blockX, msg->blockY, msg->blockZ);
+      msg->gpuStartCycles, msg->gpuEndCycles, msg->gridX, msg->gridY,
+      msg->gridZ, msg->blockX, msg->blockY, msg->blockZ);
 }
 
 void launchKernelHookWrapper(CUcontext ctx, int is_exit, const char* name,

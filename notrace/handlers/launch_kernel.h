@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <cuda_runtime.h>
+#include <thread>
 #include "common.h"
 #include "handlers/base_handler.h"  // Include the new base definitions
 #include "nvbit.h"
@@ -58,6 +59,7 @@ typedef struct {
   uint8_t messageType;
   uint64_t launchId;
   cudaEvent_t endEvent;
+  std::thread::id tid;
 } LaunchKernelEndInfo;
 #pragma pack(pop)
 
