@@ -287,10 +287,22 @@ void LaunchKernelConsumer::processEnd(LaunchKernelEndInfo* endInfo) {
   // Note: cudaEventElapsedTime syncs the CPU thread until GPU records the event.
   // Use caution if you want strictly non-blocking consumers.
   uint64_t startNs, endNs;
-  startNs = streamEventMapper.getStreamTimestamp(
-      startInfo->stream, endInfo->tid, startInfo->startEvent);
-  endNs = streamEventMapper.getStreamTimestamp(startInfo->stream, endInfo->tid,
-                                               endInfo->endEvent);
+  if constexpr (HOTSPOT_MODE) {
+    std::chrono::high_resolution_clock::time_point cpuStartTime =
+        std::chrono::high_resolution_clock::now();
+    startNs = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                  cpuStartTime.time_since_epoch())
+                  .count();
+    float durMs;
+    CUDA_SAFECALL(
+        cudaEventElapsedTime(&durMs, startInfo->startEvent, endInfo->endEvent));
+    endNs = startNs + static_cast<uint64_t>(durMs * 1e6);  // Convert ms to ns
+  } else {
+    startNs = streamEventMapper.getStreamTimestamp(
+        startInfo->stream, endInfo->tid, startInfo->startEvent);
+    endNs = streamEventMapper.getStreamTimestamp(
+        startInfo->stream, endInfo->tid, endInfo->endEvent);
+  }
 
   // 1.5 Optional: Analyze Kernel Arguments
   if constexpr (ENABLE_KERNEL_ARG_CAPTURE)

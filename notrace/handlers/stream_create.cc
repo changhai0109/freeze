@@ -1,5 +1,6 @@
 #include "handlers/stream_create.h"
 #include <cstdint>
+#include "handlers/launch_kernel.h"
 #include "utils/mpsc_queue.h"
 #include "utils/stream_event_mapper.h"
 
@@ -16,6 +17,9 @@ void StreamCreateProducer::onStartHook(CUcontext ctx, const char* name,
 
 void StreamCreateProducer::onEndHook(CUcontext ctx, const char* name,
                                      void* params, CUresult* pStatus) {
+  if constexpr (notrace::kernel_launch::HOTSPOT_MODE) {
+    return;  // Skip processing to reduce overhead in hotspot mode
+  }
 
   StreamCreateMsg* msg = messageWritter.reserve<StreamCreateMsg>(
       nvbit_api_cuda_t::API_CUDA_cuStreamCreate);
@@ -37,6 +41,9 @@ void StreamCreateWithPriorityProducer::onStartHook(CUcontext ctx,
 void StreamCreateWithPriorityProducer::onEndHook(CUcontext ctx,
                                                  const char* name, void* params,
                                                  CUresult* pStatus) {
+  if constexpr (notrace::kernel_launch::HOTSPOT_MODE) {
+    return;  // Skip processing to reduce overhead in hotspot mode
+  }
   StreamCreateMsg* msg = messageWritter.reserve<StreamCreateMsg>(
       nvbit_api_cuda_t::API_CUDA_cuStreamCreate);
   cuStreamCreateWithPriority_params* p =

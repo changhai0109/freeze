@@ -28,6 +28,7 @@ constexpr size_t MAX_TOTAL_ARG_DATA_BYTES = MAX_KERNEL_ARGS * 8;
 constexpr bool ENABLE_KERNEL_ARG_CAPTURE = false;
 constexpr bool PRINT_KERNEL_LAUNCH_RECORDS = true;
 constexpr const char* DUMP_CHROME_TRACE_ENV_VAR = "NOTRACE_DUMP_CHROME_TRACE";
+constexpr bool HOTSPOT_MODE = false;
 
 #pragma pack(push, 1)
 typedef struct {
