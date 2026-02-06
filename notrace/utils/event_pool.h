@@ -7,7 +7,7 @@
 
 class CudaEventPool {
  public:
-  constexpr static int INITIAL_POOL_SIZE = 32;
+  constexpr static int INITIAL_POOL_SIZE = 256;
   CudaEventPool(const CudaEventPool&) = delete;
   CudaEventPool& operator=(const CudaEventPool&) = delete;
 
