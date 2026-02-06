@@ -72,11 +72,12 @@ void LaunchKernelProducer::onStartHook(CUcontext ctx, const char* name,
 
   cuLaunchKernel_params* p = (cuLaunchKernel_params*)params;
 
-  const char* kernelName = "unknown_kernel";
-  cuFuncGetName(&kernelName, p->f);
+  // const char* kernelName = "unknown_kernel";
+  // cuFuncGetName(&kernelName, p->f);
 
   msg->messageType = MESSAGE_TYPE_KERNEL_START;
-  msg->kernelNameId = stringStore.getStringId(std::string(kernelName));
+  // msg->kernelNameId = stringStore.getStringId(std::string(kernelName));
+  msg->function = p->f;
   msg->launchId = launchId;
   // Acquire CUDA event for timing
   msg->startEvent = cudaEventPool.acquire();
@@ -91,52 +92,54 @@ void LaunchKernelProducer::onStartHook(CUcontext ctx, const char* name,
   msg->blockZ = p->blockDimZ;
   msg->sharedMemBytes = p->sharedMemBytes;
 
-  CachedKernelParamData const* cachedParams;
-  auto it = kernelParamMetadataCache.find(p->f);
-  if (it != kernelParamMetadataCache.end()) {
-    cachedParams = &it->second;
-  } else {
-    // Query parameter metadata from CUDA
-    CachedKernelParamData newCahceData;
-    newCahceData.numParams = 0;
+  if constexpr (ENABLE_KERNEL_ARG_CAPTURE) {
+    CachedKernelParamData const* cachedParams;
+    auto it = kernelParamMetadataCache.find(p->f);
+    if (it != kernelParamMetadataCache.end()) {
+      cachedParams = &it->second;
+    } else {
+      // Query parameter metadata from CUDA
+      CachedKernelParamData newCahceData;
+      newCahceData.numParams = 0;
 
-    for (uint8_t i = 0; i < MAX_KERNEL_ARGS; i++) {
-      size_t offset = 0;
-      size_t size = 0;
-      CUresult res = cuFuncGetParamInfo(p->f, i, &offset, &size);
-      if (res != CUDA_SUCCESS) {
-        break;
+      for (uint8_t i = 0; i < MAX_KERNEL_ARGS; i++) {
+        size_t offset = 0;
+        size_t size = 0;
+        CUresult res = cuFuncGetParamInfo(p->f, i, &offset, &size);
+        if (res != CUDA_SUCCESS) {
+          break;
+        }
+        newCahceData.params[i].bufferOffset = offset;
+        newCahceData.params[i].size = size;
+        newCahceData.numParams++;
       }
-      newCahceData.params[i].bufferOffset = offset;
-      newCahceData.params[i].size = size;
-      newCahceData.numParams++;
+      cachedParams =
+          &kernelParamMetadataCache.emplace(p->f, newCahceData).first->second;
     }
-    cachedParams =
-        &kernelParamMetadataCache.emplace(p->f, newCahceData).first->second;
-  }
-  msg->numArgs = 0;
-  msg->currentArgDataOffset = 0;
-  if (p->kernelParams != nullptr && cachedParams->numParams > 0) {
-    for (uint8_t i = 0; i < cachedParams->numParams; i++) {
-      size_t paramSize = cachedParams->params[i].size;
+    msg->numArgs = 0;
+    msg->currentArgDataOffset = 0;
+    if (p->kernelParams != nullptr && cachedParams->numParams > 0) {
+      for (uint8_t i = 0; i < cachedParams->numParams; i++) {
+        size_t paramSize = cachedParams->params[i].size;
 
-      if (msg->currentArgDataOffset + paramSize > MAX_TOTAL_ARG_DATA_BYTES)
-          [[unlikely]] {
-        // Exceeded max buffer size
-        assert(false && "Exceeded max total arg data bytes");
-        break;
+        if (msg->currentArgDataOffset + paramSize > MAX_TOTAL_ARG_DATA_BYTES)
+            [[unlikely]] {
+          // Exceeded max buffer size
+          assert(false && "Exceeded max total arg data bytes");
+          break;
+        }
+
+        // Copy parameter data from the kernelParams array
+        void* sourceParamPtr = reinterpret_cast<uint8_t**>(p->kernelParams)[i];
+        void* destParamPtr = &(msg->argDataBuffer[msg->currentArgDataOffset]);
+        memcpy(destParamPtr, sourceParamPtr, paramSize);
+
+        // Fill in the KernelArgInfo
+        msg->argInfos[msg->numArgs].bufferOffset = msg->currentArgDataOffset;
+        msg->argInfos[msg->numArgs].size = static_cast<uint16_t>(paramSize);
+        msg->numArgs++;
+        msg->currentArgDataOffset += static_cast<uint16_t>(paramSize);
       }
-
-      // Copy parameter data from the kernelParams array
-      void* sourceParamPtr = reinterpret_cast<uint8_t**>(p->kernelParams)[i];
-      void* destParamPtr = &(msg->argDataBuffer[msg->currentArgDataOffset]);
-      memcpy(destParamPtr, sourceParamPtr, paramSize);
-
-      // Fill in the KernelArgInfo
-      msg->argInfos[msg->numArgs].bufferOffset = msg->currentArgDataOffset;
-      msg->argInfos[msg->numArgs].size = static_cast<uint16_t>(paramSize);
-      msg->numArgs++;
-      msg->currentArgDataOffset += static_cast<uint16_t>(paramSize);
     }
   }
 
@@ -268,7 +271,8 @@ void LaunchKernelConsumer::processEnd(LaunchKernelEndInfo* endInfo) {
                                                endInfo->endEvent);
 
   // 1.5 Optional: Analyze Kernel Arguments
-  analyzeKernelArgs(startInfo);
+  if constexpr (ENABLE_KERNEL_ARG_CAPTURE)
+    analyzeKernelArgs(startInfo);
 
   // 2. Generate the "Processed" Record
   // The Consumer acts as a Producer here! It writes back to the queue.
@@ -278,7 +282,9 @@ void LaunchKernelConsumer::processEnd(LaunchKernelEndInfo* endInfo) {
 
   if (record) {
     record->messageType = MESSAGE_TYPE_KERNEL_PROCESSED;
-    record->kernelNameId = startInfo->kernelNameId;
+    const char* kernelName = "unknown_kernel";
+    cuFuncGetName(&kernelName, startInfo->function);
+    record->kernelNameId = stringStore.getStringId(kernelName);
     record->launchId = startInfo->launchId;
     record->gpuStartCycles = startNs;
     record->gpuEndCycles = endNs;

@@ -24,6 +24,7 @@ const uint8_t MESSAGE_TYPE_KERNEL_PROCESSED = 4;
 
 constexpr size_t MAX_KERNEL_ARGS = 32;
 constexpr size_t MAX_TOTAL_ARG_DATA_BYTES = MAX_KERNEL_ARGS * 8;
+constexpr bool ENABLE_KERNEL_ARG_CAPTURE = false;
 
 #pragma pack(push, 1)
 typedef struct {
@@ -35,7 +36,8 @@ typedef struct {
 #pragma pack(push, 1)
 typedef struct {
   uint8_t messageType;
-  StringId kernelNameId;
+  CUfunction function;
+  // StringId kernelNameId;
   uint64_t launchId;
   cudaEvent_t startEvent;
 
