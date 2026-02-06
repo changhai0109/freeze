@@ -4,6 +4,7 @@
 #include <cuda.h>
 // #include <cuda_runtime.h>
 #include <cstdint>
+#include <fstream>
 #include <unordered_map>
 #include <vector>
 
@@ -25,6 +26,8 @@ const uint8_t MESSAGE_TYPE_KERNEL_PROCESSED = 4;
 constexpr size_t MAX_KERNEL_ARGS = 32;
 constexpr size_t MAX_TOTAL_ARG_DATA_BYTES = MAX_KERNEL_ARGS * 8;
 constexpr bool ENABLE_KERNEL_ARG_CAPTURE = false;
+constexpr bool PRINT_KERNEL_LAUNCH_RECORDS = true;
+constexpr const char* DUMP_CHROME_TRACE_ENV_VAR = "NOTRACE_DUMP_CHROME_TRACE";
 
 #pragma pack(push, 1)
 typedef struct {
@@ -109,7 +112,7 @@ class LaunchKernelProducer : public TraceProducer {
  */
 class LaunchKernelConsumer : public TraceConsumer {
  public:
-  LaunchKernelConsumer() = default;
+  LaunchKernelConsumer();
   ~LaunchKernelConsumer();  // Cleanup leftover map entries
 
   void processImpl(void* data, size_t size) override;
@@ -124,6 +127,9 @@ class LaunchKernelConsumer : public TraceConsumer {
   // Correlation map to match Start events with End events.
   // Owned by the consumer instance (single-threaded access assumed in processUpdates)
   std::unordered_map<uint64_t, LaunchKernelStartInfo*> pending_launches_;
+
+  std::ofstream trace_file_;
+  bool first_event_ = true;
 };
 
 void launchKernelHookWrapper(CUcontext ctx, int is_exit, const char* name,

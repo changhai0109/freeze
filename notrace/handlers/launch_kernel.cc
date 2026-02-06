@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdio>
 #include <cstring>
+#include <iomanip>
 #include <map>
 #include <memory>
 #include <thread>
@@ -181,6 +182,20 @@ void LaunchKernelProducer::onEndHook(CUcontext ctx, const char* name,
 // KernelLaunchConsumer Implementation
 // =============================================================================
 
+LaunchKernelConsumer::LaunchKernelConsumer() {
+  // Open the trace file for writing
+  const char* traceFileName = std::getenv(DUMP_CHROME_TRACE_ENV_VAR);
+  if (traceFileName) {
+    trace_file_.open(traceFileName);
+    if (!trace_file_.is_open()) {
+      fprintf(stderr, "Failed to open trace file: %s\n", traceFileName);
+    } else {
+      // Write the opening bracket for the JSON array
+      trace_file_ << "{\"traceEvents\": [\n";
+    }
+  }
+}
+
 LaunchKernelConsumer::~LaunchKernelConsumer() {
   // Cleanup any pending start info structs to avoid memory leaks
   for (auto& pair : pending_launches_) {
@@ -189,6 +204,13 @@ LaunchKernelConsumer::~LaunchKernelConsumer() {
     delete pair.second;
   }
   pending_launches_.clear();
+
+  if (this->trace_file_.is_open()) {
+    // Write the closing bracket for the JSON array
+    trace_file_ << "\n]}\n";
+    trace_file_.close();
+    printf("Trace file closed: %s\n", std::getenv(DUMP_CHROME_TRACE_ENV_VAR));
+  }
 }
 
 void LaunchKernelConsumer::processImpl(void* data, size_t size) {
@@ -310,12 +332,33 @@ void LaunchKernelConsumer::processEnd(LaunchKernelEndInfo* endInfo) {
 }
 
 void LaunchKernelConsumer::processRecord(LaunchKernelRecord* msg) {
-  printf(
-      "KernelLaunchRecord: Name=%s, startNs=%lu, endNs=%lu, grid=(%u,%u,%u), "
-      "block=(%u,%u,%u)\n",
-      stringStore.getStringFromId(msg->kernelNameId).c_str(),
-      msg->gpuStartCycles, msg->gpuEndCycles, msg->gridX, msg->gridY,
-      msg->gridZ, msg->blockX, msg->blockY, msg->blockZ);
+  if constexpr (PRINT_KERNEL_LAUNCH_RECORDS)
+    printf(
+        "KernelLaunchRecord: Name=%s, startNs=%lu, endNs=%lu, grid=(%u,%u,%u), "
+        "block=(%u,%u,%u)\n",
+        stringStore.getStringFromId(msg->kernelNameId).c_str(),
+        msg->gpuStartCycles, msg->gpuEndCycles, msg->gridX, msg->gridY,
+        msg->gridZ, msg->blockX, msg->blockY, msg->blockZ);
+  if (this->trace_file_.is_open()) {
+    // Write a JSON event entry
+    if (!first_event_) {
+      trace_file_ << ",\n";
+    } else {
+      first_event_ = false;
+    }
+    trace_file_ << std::fixed << std::setprecision(3);
+    trace_file_ << "{";
+    trace_file_ << "\"name\":\""
+                << stringStore.getStringFromId(msg->kernelNameId) << "\",";
+    trace_file_ << "\"cat\":\"kernel\",";
+    trace_file_ << "\"ph\":\"X\",";
+    trace_file_ << "\"ts\":" << (msg->gpuStartCycles / 1000.0) << ",";
+    trace_file_ << "\"dur\":"
+                << ((msg->gpuEndCycles - msg->gpuStartCycles) / 1000.0) << ",";
+    trace_file_ << "\"pid\":0,";
+    trace_file_ << "\"tid\":" << reinterpret_cast<uint64_t>(msg->stream);
+    trace_file_ << "}";
+  }
 }
 
 void launchKernelHookWrapper(CUcontext ctx, int is_exit, const char* name,
