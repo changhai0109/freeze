@@ -8,6 +8,8 @@
 namespace notrace {
 namespace memory_tracker {
 
+constexpr bool ENABLE_MEMORY_TRACKING = false;
+
 enum class Location { UNKNOWN = 0, DEVICE, HOST };
 
 class MemoryTracker {

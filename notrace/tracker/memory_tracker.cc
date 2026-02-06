@@ -7,11 +7,17 @@ namespace notrace {
 namespace memory_tracker {
 
 bool MemoryTracker::exists(void* ptr) {
+  if constexpr (!ENABLE_MEMORY_TRACKING) {
+    return true;
+  }
   return activePointerMap.find(ptr) != activePointerMap.end();
 }
 
 void MemoryTracker::recordAllocation(void* ptr, size_t size,
                                      Location location) {
+  if constexpr (!ENABLE_MEMORY_TRACKING) {
+    return;
+  }
   // printf("Recording allocation: ptr=%p, size=%zu\n", ptr, size);
   if (exists(ptr)) {
     assert(false && "Double allocation detected for the same pointer");
@@ -21,6 +27,9 @@ void MemoryTracker::recordAllocation(void* ptr, size_t size,
 }
 
 void MemoryTracker::recordDeallocation(void* ptr) {
+  if constexpr (!ENABLE_MEMORY_TRACKING) {
+    return;
+  }
   auto it = activePointerMap.find(ptr);
   if (it == activePointerMap.end()) {
     printf("Deallocation of untracked pointer: %p\n", ptr);
@@ -33,6 +42,9 @@ void MemoryTracker::recordDeallocation(void* ptr) {
 }
 
 size_t MemoryTracker::getAllocationSize(void* ptr) const {
+  if constexpr (!ENABLE_MEMORY_TRACKING) {
+    return 0;
+  }
   auto it = activePointerMap.find(ptr);
   if (it != activePointerMap.end()) {
     return it->second.first;
@@ -42,6 +54,9 @@ size_t MemoryTracker::getAllocationSize(void* ptr) const {
 }
 
 Location MemoryTracker::getAllocationLocation(void* ptr) const {
+  if constexpr (!ENABLE_MEMORY_TRACKING) {
+    return Location::UNKNOWN;
+  }
   auto it = activePointerMap.find(ptr);
   if (it != activePointerMap.end()) {
     return it->second.second;
