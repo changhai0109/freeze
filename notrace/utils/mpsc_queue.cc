@@ -159,22 +159,22 @@ void MPSCMessageQueue::registerConsumers() {
 
   this->registerConsumer(nvbit_api_cuda_t::API_CUDA_cuLaunchKernel,
                          &kernelLaunchConsumer);
-  this->registerConsumer(nvbit_api_cuda_t::API_CUDA_cuMemAlloc_v2,
-                         &memAllocConsumer);
-  this->registerConsumer(nvbit_api_cuda_t::API_CUDA_cuMemAlloc,
-                         &memAllocConsumer);
-  this->registerConsumer(nvbit_api_cuda_t::API_CUDA_cuMemFree_v2,
-                         &memFreeConsumer);
-  this->registerConsumer(nvbit_api_cuda_t::API_CUDA_cuMemFree,
-                         &memFreeConsumer);
-  this->registerConsumer(nvbit_api_cuda_t::API_CUDA_cuLibraryLoadData,
-                         &libraryLoadDataConsumer);
-  this->registerConsumer(nvbit_api_cuda_t::API_CUDA_cuStreamCreate,
-                         &streamCreateConsumer);
-  this->registerConsumer(nvbit_api_cuda_t::API_CUDA_cuStreamCreateWithPriority,
-                         &streamCreateConsumer);
-  this->registerConsumer(nvbit_api_cuda_t::API_CUDA_cuCtxGetCurrent,
-                         &ctxGetCurrentConsumer);
+  // this->registerConsumer(nvbit_api_cuda_t::API_CUDA_cuMemAlloc_v2,
+  //                        &memAllocConsumer);
+  // this->registerConsumer(nvbit_api_cuda_t::API_CUDA_cuMemAlloc,
+  //                        &memAllocConsumer);
+  // this->registerConsumer(nvbit_api_cuda_t::API_CUDA_cuMemFree_v2,
+  //                        &memFreeConsumer);
+  // this->registerConsumer(nvbit_api_cuda_t::API_CUDA_cuMemFree,
+  //                        &memFreeConsumer);
+  // this->registerConsumer(nvbit_api_cuda_t::API_CUDA_cuLibraryLoadData,
+  //                        &libraryLoadDataConsumer);
+  // this->registerConsumer(nvbit_api_cuda_t::API_CUDA_cuStreamCreate,
+  //                        &streamCreateConsumer);
+  // this->registerConsumer(nvbit_api_cuda_t::API_CUDA_cuStreamCreateWithPriority,
+  //                        &streamCreateConsumer);
+  // this->registerConsumer(nvbit_api_cuda_t::API_CUDA_cuCtxGetCurrent,
+  //                        &ctxGetCurrentConsumer);
 }
 
 }  // namespace notrace

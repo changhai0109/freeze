@@ -1,0 +1,84 @@
+Name,Count,Avg Duration (us),Total Duration (us)
+[CUDA memcpy Host-to-Device],8950,34.17,305792.6
+"stream_executor::gpu::RedzoneAllocatorKernelImpl(unsigned char *, unsigned char, unsigned long, unsigned int *)",2418,107.33,259515.68
+loop_multiply_fusion,3022,79.79,241117.07
+wrapped_convert,4193,38.54,161612.04
+turing_fp16_s1688gemm_fp16_256x64_ldg8_f2f_stages_32x1_nn,879,153.66,135067.41
+volta_fp16_sgemm_fp16_32x128_nn,64,1764.08,112900.83
+volta_fp16_sgemm_fp16_128x128_nn,64,1493.82,95604.5
+volta_fp16_sgemm_fp16_64x64_nn,64,821.86,52599.26
+volta_fp16_sgemm_fp16_128x64_nn,128,390.21,49947.06
+turing_fp16_s1688gemm_fp16_128x256_ldg8_f2f_nn,56,836.18,46826.14
+"stream_executor::gpu::<unnamed>::DelayKernel(volatile stream_executor::GpuSemaphoreState *, stream_executor::GpuSemaphoreState)",605,65.65,39719.0
+[CUDA memcpy Device-to-Device],7095,5.55,39403.99
+volta_fp16_sgemm_fp16_32x32_sliced1x4_nn,64,590.66,37801.98
+volta_fp16_sgemm_fp16_128x32_nn,64,526.82,33716.4
+volta_fp16_sgemm_fp16_64x32_sliced1x4_nn,64,448.4,28697.43
+turing_fp16_s1688gemm_fp16_256x128_ldg8_f2f_nn,56,506.36,28356.14
+volta_fp16_sgemm_fp16_128x32_sliced1x4_nn,64,435.64,27880.68
+turing_fp16_s1688gemm_fp16_128x128_ldg8_f2f_nn,56,425.33,23818.31
+turing_fp16_s1688gemm_fp16_128x64_sliced1x2_ldg8_f2f_nn,182,69.45,12640.42
+"stream_executor::gpu::RepeatBufferKernelImpl(char *, long, long)",31,371.69,11522.54
+"void gemv2N_kernel<long, long, __half, float, float, float, (int)128, (int)1, (int)2, (int)2, (int)1, (bool)0, cublasGemvParamsEx<int, cublasGemvTensorStridedBatched<const __half>, cublasGemvTensorStridedBatched<const float>, cublasGemvTensorStridedBatched<float>, float>>(T13)",48,187.59,9004.3
+wrapped_transpose,432,20.47,8842.41
+loop_compare_fusion,613,13.56,8310.34
+"std::enable_if<T7, void>::type internal::gemvx::kernel<int, int, __half, __half, __half, float, (bool)1, (bool)1, (bool)0, (bool)0, (int)7, (bool)0, cublasGemvParamsEx<int, cublasGemvTensorStridedBatched<const __half>, cublasGemvTensorStridedBatched<const __half>, cublasGemvTensorStridedBatched<__half>, float>>(T13)",56,67.15,3760.67
+[CUDA memset],2069,1.79,3705.92
+"void gemmSN_NN_kernel<float, (int)256, (int)4, (int)2, (int)8, (int)5, (int)4, (bool)0, cublasGemvTensorStridedBatched<const __half>, cublasGemvTensorStridedBatched<const __half>, cublasGemvTensorStridedBatched<__half>>(cublasGemmSmallNParams<T9, T10, T11, T1>)",10,346.72,3467.17
+"void stream_executor::gpu::xla_fp_comparison<Eigen::half>(T1 *, T1 *, float, unsigned long, int *)",553,5.82,3218.31
+[CUDA memcpy Device-to-Host],1896,1.33,2526.21
+input_reduce_fusion,453,4.27,1932.8
+wrapped_add,1124,1.34,1504.96
+input_concatenate_fusion,894,1.49,1333.28
+void cutlass::Kernel2<cutlass_75_wmma_tensorop_f16_s161616gemm_f16_32x32_128x2_nn_align8>(T1::Params),182,6.88,1251.62
+loop_dynamic_slice_fusion,911,1.34,1216.99
+"void cublasLt::splitKreduce_kernel<(int)32, (int)16, int, __half, __half, float, __half, (bool)0, __half, __half, __half, (bool)1, (bool)0, (bool)0, (bool)0>(cublasLt::cublasSplitKParams<T6>, const T4 *, const T10 *, T9 *, T5 *, const T6 *, const T6 *, const T11 *, const T4 *, T11 *, void *, long, T6 *, int *, T6 *, T6 *, const T6 *, const T6 *, const T6 *, const T6 *, const T6 *)",648,1.86,1206.08
+void cutlass::Kernel2<cutlass_75_wmma_tensorop_f16_s161616gemm_f16_16x16_128x2_nn_align8>(T1::Params),182,6.07,1104.7
+wrapped_broadcast,954,1.12,1069.22
+turing_fp16_s1688gemm_fp16_128x128_ldg8_f2f_stages_32x1_nn,22,48.08,1057.66
+loop_divide_fusion,699,1.32,921.0
+loop_add_fusion,720,1.21,869.25
+wrapped_multiply,539,1.56,840.45
+loop_xor_fusion,684,1.14,779.07
+wrapped_select,602,1.28,768.74
+loop_multiply_fusion_1,678,1.06,716.93
+loop_broadcast_fusion,512,1.31,670.66
+void cutlass::Kernel2<cutlass_75_tensorop_f16_s1688gemm_f16_64x64_nn_align1>(T1::Params),172,3.89,668.22
+wrapped_sqrt,363,1.27,459.71
+wrapped_transpose_1,320,1.34,428.42
+wrapped_concatenate,352,1.19,418.66
+wrapped_negate,352,1.18,416.26
+volta_sgemm_32x32_sliced1x4_nn,88,4.54,399.78
+loop_maximum_fusion,176,1.9,334.11
+loop_and_fusion,256,1.16,297.98
+loop_reduce_fusion,160,1.8,287.84
+wrapped_compare,250,1.11,277.7
+wrapped_iota,266,0.99,263.3
+"void gemmSN_NN_kernel<float, (int)256, (int)4, (int)2, (int)8, (int)5, (int)4, (bool)0, cublasGemvTensorStridedBatched<const float>, cublasGemvTensorStridedBatched<const float>, cublasGemvTensorStridedBatched<float>>(cublasGemmSmallNParams<T9, T10, T11, T1>)",84,2.74,230.21
+wrapped_exponential,176,1.23,217.09
+loop_gather_fusion,160,1.29,206.94
+wrapped_slice_1,177,1.15,203.2
+wrapped_slice,177,1.15,203.01
+loop_sqrt_fusion,176,1.14,201.41
+loop_subtract_fusion,160,1.22,195.68
+loop_dynamic_update_slice_fusion,175,1.09,191.36
+loop_not_fusion,100,1.6,159.52
+"void cublasLt::splitKreduce_kernel<(int)32, (int)16, int, float, __half, float, __half, (bool)0, __half, __half, __half, (bool)1, (bool)0, (bool)0, (bool)0>(cublasLt::cublasSplitKParams<T6>, const T4 *, const T10 *, T9 *, T5 *, const T6 *, const T6 *, const T11 *, const T4 *, T11 *, void *, long, T6 *, int *, T6 *, T6 *, const T6 *, const T6 *, const T6 *, const T6 *, const T6 *)",48,3.29,157.92
+volta_sgemm_128x128_nn,8,18.58,148.61
+volta_sgemm_64x64_nn,12,12.12,145.44
+input_transpose_fusion,80,1.32,105.22
+volta_sgemm_128x64_nn,8,12.55,100.38
+loop_transpose_fusion,80,1.14,90.88
+"void stream_executor::gpu::xla_fp_comparison<float>(T1 *, T1 *, float, unsigned long, int *)",34,2.61,88.9
+volta_sgemm_128x32_sliced1x4_nn,8,9.36,74.88
+volta_sgemm_128x32_nn,8,8.07,64.54
+volta_sgemm_64x32_sliced1x4_nn,8,6.97,55.78
+volta_sgemm_32x128_nn,6,7.92,47.52
+loop_select_fusion,26,1.6,41.7
+wrapped_subtract,26,1.3,33.92
+wrapped_divide,16,1.46,23.33
+"void gemmSN_NN_kernel<float, (int)128, (int)2, (int)4, (int)8, (int)5, (int)4, (bool)0, cublasGemvTensorStridedBatched<const float>, cublasGemvTensorStridedBatched<const float>, cublasGemvTensorStridedBatched<float>>(cublasGemmSmallNParams<T9, T10, T11, T1>)",2,4.99,9.98
+input_reduce_fusion_1,5,1.48,7.42
+wrapped_not,5,1.11,5.54
+loop_minimum_fusion,5,1.1,5.5
+wrapped_or,5,1.01,5.06

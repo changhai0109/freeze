@@ -1,4 +1,5 @@
-PROFILE ?= debug
+PROFILE ?= release
+# PROFILE ?= debug
 ifeq ($(PROFILE),debug)
   CXXFLAGS = -g -O0 -DDEBUG
   NVCCFLAGS = -g -O0 -DDEBUG

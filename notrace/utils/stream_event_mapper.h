@@ -19,7 +19,7 @@ class StreamEventMapper {
       const CUstream& stream, const std::thread::id tid) const;
 
   uint64_t getStreamTimestamp(const CUstream& stream, const std::thread::id tid,
-                              const cudaEvent_t& event) const;
+                              const cudaEvent_t& event);
 
  private:
   StreamEventMapper() = default;

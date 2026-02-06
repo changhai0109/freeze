@@ -45,24 +45,24 @@ void notrace::register_handlers() {
   // &notrace::handleKernelLaunch);
   register_cuda_event_handler(API_CUDA_cuLaunchKernel,
                               notrace::kernel_launch::launchKernelHookWrapper);
-  register_cuda_event_handler(API_CUDA_cuMemAlloc_v2,
-                              notrace::mem_alloc::memAllocHookWrapper);
-  register_cuda_event_handler(API_CUDA_cuMemAlloc,
-                              notrace::mem_alloc::memAllocHookWrapper);
-  register_cuda_event_handler(API_CUDA_cuMemFree_v2,
-                              notrace::mem_free::memFreeHookWrapper);
-  register_cuda_event_handler(API_CUDA_cuMemFree,
-                              notrace::mem_free::memFreeHookWrapper);
-  register_cuda_event_handler(
-      API_CUDA_cuLibraryLoadData,
-      notrace::library_load_data::libraryLoadDataHookWrapper);
-  register_cuda_event_handler(
-      API_CUDA_cuStreamCreate,
-      notrace::stream_create::streamCreateProducerWrapper);
-  register_cuda_event_handler(
-      API_CUDA_cuStreamCreateWithPriority,
-      notrace::stream_create::streamCreateWithPriorityProducerWrapper);
-  register_cuda_event_handler(
-      API_CUDA_cuCtxGetCurrent,
-      notrace::ctx_get_current::ctxGetCurrentProducerWrapper);
+  // register_cuda_event_handler(API_CUDA_cuMemAlloc_v2,
+  //                             notrace::mem_alloc::memAllocHookWrapper);
+  // register_cuda_event_handler(API_CUDA_cuMemAlloc,
+  //                             notrace::mem_alloc::memAllocHookWrapper);
+  // register_cuda_event_handler(API_CUDA_cuMemFree_v2,
+  //                             notrace::mem_free::memFreeHookWrapper);
+  // register_cuda_event_handler(API_CUDA_cuMemFree,
+  //                             notrace::mem_free::memFreeHookWrapper);
+  // register_cuda_event_handler(
+  //     API_CUDA_cuLibraryLoadData,
+  //     notrace::library_load_data::libraryLoadDataHookWrapper);
+  // register_cuda_event_handler(
+  //     API_CUDA_cuStreamCreate,
+  //     notrace::stream_create::streamCreateProducerWrapper);
+  // register_cuda_event_handler(
+  //     API_CUDA_cuStreamCreateWithPriority,
+  //     notrace::stream_create::streamCreateWithPriorityProducerWrapper);
+  // register_cuda_event_handler(
+  //     API_CUDA_cuCtxGetCurrent,
+  //     notrace::ctx_get_current::ctxGetCurrentProducerWrapper);
 }

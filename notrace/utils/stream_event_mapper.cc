@@ -59,14 +59,16 @@ StreamEventMapper::getStreamStartEvent(const CUstream& stream,
   return it->second;
 }
 
-uint64_t StreamEventMapper::getStreamTimestamp(
-    const CUstream& stream, const std::thread::id tid,
-    const cudaEvent_t& endEvent) const {
+uint64_t StreamEventMapper::getStreamTimestamp(const CUstream& stream,
+                                               const std::thread::id tid,
+                                               const cudaEvent_t& endEvent) {
   cudaEvent_t startEvent;
   uint64_t baseTimestamp;
   if (stream == NULL) {
     auto it = default_stream_start_map.find(tid);
     if (it == default_stream_start_map.end()) {
+      // recordStreamStart(stream, tid);  // Record start event if not found
+      // it = default_stream_start_map.find(tid);
       assert(false && "Default stream start event not found for thread");
       throw std::runtime_error(
           "Default stream start event not found for thread");

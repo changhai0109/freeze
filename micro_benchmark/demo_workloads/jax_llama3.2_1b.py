@@ -6,6 +6,7 @@ from transformers import (
     AutoTokenizer,
     FlaxResNetModel,
     GenerationConfig,
+    AutoConfig,
 )
 import numpy as np
 
@@ -18,7 +19,13 @@ def run_jax_llama():
 
     try:
         tokenizer = AutoTokenizer.from_pretrained(model_id)
-        model = FlaxAutoModelForCausalLM.from_pretrained(model_id, dtype=jnp.float16)
+        config = AutoConfig.from_pretrained(model_id)
+        config.max_position_embeddings = 4096
+        config.use_cache = True
+        print(f"Model config: {config}")
+        model = FlaxAutoModelForCausalLM.from_pretrained(
+            model_id, config=config, dtype=jnp.float16
+        )
     except Exception as e:
         print(f"Error loading Llama: {e}")
         return
