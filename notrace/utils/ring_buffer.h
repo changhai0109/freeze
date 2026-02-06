@@ -25,7 +25,7 @@ struct BufferSpan {
 
 class ThreadLocalRingBuffer {
  public:
-  static constexpr size_t BUFFER_SIZE = 10 * 1024 * 1024;  // 10MB
+  static constexpr size_t BUFFER_SIZE = 128 * 1024 * 1024;  // 10MB
 
   uint8_t* data;
 
