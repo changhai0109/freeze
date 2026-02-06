@@ -1,0 +1,8 @@
+Running Benchmark (Matrix Size: 1024x1024, Runs: 1000)
+--------------------------------------------------------------------------------
+Method                   Avg Latency(ms)Std Dev(ms)    Overhead
+--------------------------------------------------------------------------------
+Baseline (Wall Clock): 0.186462 ms (Avg)
+CUDA Event (Synchronous): 0.173624 ms (Avg), Overhead: -2.57%, standard deviation: 0.006289 ms
+CUDA Event (Async): 0.165917 ms (Avg), Overhead: -10.06%, standard deviation: 0.001609 ms
+Baseline (Wall Clock): 0.164842 ms (Avg)
